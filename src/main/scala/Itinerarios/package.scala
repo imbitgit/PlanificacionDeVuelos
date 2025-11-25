@@ -1,0 +1,221 @@
+import Datos._
+/**
+ * Package object Itinerarios
+ *
+ * Contiene:
+ *   - Funciones auxiliares para manejo de tiempos y estructuras de datos.
+ *   - F1: itinerarios        → genera todos los itinerarios entre dos aeropuertos.
+ *   - F2: itinerariosTiempo  → selecciona hasta 3 itinerarios con menor tiempo total.
+ */
+package object Itinerarios {
+
+  // =========================
+  // Helpers comunes
+  // =========================
+
+  /**
+   * Construye un mapa códigoAeropuerto -> Aeropuerto.
+   *
+   * Esto permite acceder en O(1) al aeropuerto a partir de su código,
+   * en lugar de recorrer la lista cada vez.
+   */
+  private def mapaAeropuertos(aeropuertos: List[Aeropuerto]): Map[String, Aeropuerto] =
+    aeropuertos.map(a => a.Cod -> a).toMap
+
+  /**
+   * Agrupa los vuelos por aeropuerto de origen.
+   *
+   * Resultado: Map(org -> List(vuelos que salen de org)).
+   * Nos sirve para, dado un aeropuerto, obtener rápidamente
+   * todos los vuelos que salen de él.
+   */
+  private def vuelosPorOrigen(vuelos: List[Vuelo]): Map[String, List[Vuelo]] =
+    vuelos.groupBy(_.Org)
+
+  /**
+   * Convierte una hora local (h:m) a minutos UTC, usando el GMT del aeropuerto.
+   *
+   * Ejemplos:
+   *   gmt = -500 → offsetHoras = -5
+   *   gmt =  300 → offsetHoras =  3
+   *
+   * La relación es:
+   *   horaLocal = horaUTC + offset
+   *   ⇒ horaUTC = horaLocal - offset
+   */
+  def utcMinutes(h: Int, m: Int, gmt: Int): Int = {
+    val offsetHours = gmt / 100             // -500 → -5, 300 → 3
+    h * 60 + m - offsetHours * 60           // pasamos todo a minutos
+  }
+  /** Minutos que tiene un día completo (24 horas). */
+  val DayMinutes: Int = 24 * 60
+
+  /**
+   * Ajusta un tiempo t para que sea mayor o igual que "after",
+   * sumando días completos (de 24h) si es necesario.
+   *
+   * Esto se usa para:
+   *   - Asegurar que la hora de llegada no sea anterior a la de salida.
+   *   - Manejar vuelos que cruzan medianoche o duran más de un día.
+   */
+  def adjust(after: Int, t: Int): Int =
+    if (t >= after) t
+    else {
+      val delta = after - t
+      // número mínimo de días completos que hay que sumar
+      val days  = (delta + DayMinutes - 1) / DayMinutes
+      t + days * DayMinutes
+    }
+
+  /**
+   * Calcula el tiempo total de viaje de un itinerario en minutos.
+   *
+   * El tiempo total incluye:
+   *   - Tiempo de vuelo.
+   *   - Tiempos de espera entre conexiones.
+   *   - Diferencias de huso horario (GMT) entre aeropuertos.
+   *
+   * Recibe:
+   *   it     → lista de vuelos (Itinerario).
+   *   gmtMap → mapa códigoAeropuerto -> GMT.
+   *
+   * Estrategia:
+   *   - Caso base: itinerario vacío → 0.
+   *   - Para el primer vuelo: calculamos salida y llegada en UTC.
+   *   - Para el resto, usamos foldLeft acumulando:
+   *       (últimaSalidaAjustada, últimaLlegadaAjustada)
+   *     y garantizando que cada vuelo sale después de la llegada anterior.
+   *   - Resultado final: últimaLlegada - primeraSalida.
+   */
+  def tiempoTotal(it: Itinerario, gmtMap: Map[String, Int]): Int = it match {
+    case Nil => 0
+    case first :: rest =>
+      // Conversión de la primera salida y llegada a UTC
+      val dep0     = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
+      val arr0Raw  = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
+      val arr0Adj  = adjust(dep0, arr0Raw) // llegada nunca antes de la salida
+
+      // Recorremos el resto de vuelos actualizando salida/llegada
+      val (_, lastArr) = rest.foldLeft((dep0, arr0Adj)) {
+        case ((_, prevArr), vuelo) =>
+          // Hora de salida en UTC
+          val depRaw = utcMinutes(vuelo.HS, vuelo.MS, gmtMap(vuelo.Org))
+          // Ajustamos para que sea >= llegada anterior
+          val depAdj = adjust(prevArr, depRaw)
+          // Hora de llegada en UTC y ajustada
+          val arrRaw = utcMinutes(vuelo.HL, vuelo.ML, gmtMap(vuelo.Dst))
+          val arrAdj = adjust(depAdj, arrRaw)
+          (depAdj, arrAdj)
+      }
+
+      // Tiempo total = última llegada - primera salida
+      lastArr - dep0
+  }
+
+  // =========================
+  // F1: itinerarios
+  // =========================
+
+  /**
+   * F1 – Encontrando itinerarios.
+   *
+   * Construye una función que, dados dos códigos de aeropuerto (cod1, cod2),
+   * devuelve TODOS los itinerarios posibles (listas de vuelos) que van de
+   * cod1 a cod2, sin repetir aeropuertos.
+   *
+   * Uso típico:
+   *   val its = itinerarios(vuelosCurso, aeropuertosCurso)
+   *   val rutas = its("CLO", "SVO")
+   */
+  def itinerarios(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
+  : (String, String) => List[Itinerario] = {
+
+    // Preprocesamos los vuelos una sola vez: mapa origen -> lista de vuelos
+    val porOrigen: Map[String, List[Vuelo]] = vuelosPorOrigen(vuelos)
+
+    /**
+     * Función recursiva que hace una búsqueda en profundidad (DFS)
+     * para construir todos los itinerarios posibles.
+     *
+     * Parámetros:
+     *   origen    → aeropuerto actual.
+     *   destino   → aeropuerto destino final.
+     *   visitados → conjunto de aeropuertos que ya hemos visitado
+     *               en el camino actual (para evitar ciclos).
+     *
+     * Resultado:
+     *   Lista de itinerarios (List[Itinerario]), donde cada itinerario
+     *   es una lista de vuelos desde "origen" hasta "destino".
+     */
+    def buscar(origen: String, destino: String, visitados: Set[String]): List[Itinerario] =
+      if (origen == destino) {
+        // Caso base: ya llegamos al destino.
+        // Representamos “camino vacío” con Nil.
+        List(Nil)
+      } else {
+        // Vuelos que salen del aeropuerto actual
+        val salientes = porOrigen.getOrElse(origen, Nil)
+
+        salientes
+          // No volvemos a un aeropuerto ya visitado (evitamos ciclos)
+          .filter(v => !visitados(v.Dst))
+          // Para cada vuelo, extendemos los itinerarios desde su destino
+          .flatMap { vuelo =>
+            buscar(vuelo.Dst, destino, visitados + vuelo.Dst)
+              // Anteponemos el vuelo actual al itinerario recursivo
+              .map(it => vuelo :: it)
+          }
+      }
+
+    /**
+     * Función que el usuario realmente invoca:
+     *   (cod1, cod2) => lista de itinerarios.
+     *
+     * Caso especial: si cod1 == cod2, por convenio devolvemos List(Nil),
+     * interpretado como “itinerario vacío” (ya estamos en el destino).
+     */
+    (c1: String, c2: String) =>
+      if (c1 == c2) List(Nil)
+      else buscar(c1, c2, Set(c1))  // empezamos habiendo visitado el origen
+  }
+
+  // =========================
+  // F2: itinerariosTiempo
+  // =========================
+
+  /**
+   * F2 – Minimización de tiempo total de viaje.
+   *
+   * Construye una función que, dados dos códigos de aeropuerto (cod1, cod2),
+   * devuelve HASTA tres itinerarios que correspondan a los menores tiempos
+   * totales de viaje (contando vuelo + esperas + zonas horarias).
+   *
+   * Si hay menos de 3 itinerarios posibles, devuelve todos los que existan.
+   */
+  def itinerariosTiempo(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
+  : (String, String) => List[Itinerario] = {
+
+    // Mapa códigoAeropuerto -> GMT, para usar en tiempoTotal
+    val gmtMap: Map[String, Int] =
+      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+
+    // Reutilizamos la función F1 para generar todos los itinerarios posibles.
+    val todosItinerarios = itinerarios(vuelos, aeropuertos)
+
+    /**
+     * Función que el usuario invoca:
+     *   (cod1, cod2) => lista de los mejores itinerarios en tiempo.
+     *
+     * Estrategia:
+     *   1. Obtenemos todos los itinerarios cod1 → cod2.
+     *   2. Calculamos su tiempo total usando tiempoTotal.
+     *   3. Ordenamos de menor a mayor tiempo.
+     *   4. Tomamos como máximo los primeros 3.
+     */
+    (c1: String, c2: String) => {
+      val its = todosItinerarios(c1, c2)               // todos los itinerarios posibles
+      val ordenados = its.sortBy(it => tiempoTotal(it, gmtMap))
+      ordenados.take(3)                                // límite de 3 como pide el enunciado
+    }
+  }
+}
