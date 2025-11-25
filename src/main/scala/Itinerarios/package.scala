@@ -90,7 +90,10 @@ package object Itinerarios {
    *
    * Por eso:
    * escalasTotales = (número de cambios de avión) + sum(Esc de cada vuelo)
-   * = (it.length - 1) + it.map(_.Esc).sum, si no es vacío. */
+   * = (it.length - 1) + it.map(_.Esc).sum, si no es vacío.
+   */
+
+
    def escalasTotales(it: Itinerario): Int = it match {
      case Nil => 0
      case _=> (it.length - 1) + it.map(_.Esc).sum
