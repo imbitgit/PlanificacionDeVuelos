@@ -2,72 +2,86 @@ import Datos._
 import Itinerarios._
 import ItinerariosPar._
 
-// ===== FUNCIONES QUE VAMOS A PROBAR =====
-val its          = itinerarios(vuelosCurso, aeropuertosCurso)
-val itsPar       = itinerariosPar(vuelosCurso, aeropuertosCurso)
 
-val itsTiempo    = itinerariosTiempo(vuelosCurso, aeropuertosCurso)
-val itsTiempoPar = itinerariosTiempoPar(vuelosCurso, aeropuertosCurso)
+//Pruebas para 3.1 ENUNCIADO (Corresponde a 2.1.1)
+//Estas son las pruebas que el enunciado plantea para itinerarios, Devuelven
+//Exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
+val itsCurso = itinerarios(vuelosCurso, aeropuertosCurso)
+//Prueba itinerariosTiempo
+//2.1 Aeropuertos Incomunicados
+val its1 = itsCurso("MID", "SVCS")
+val its2 = itsCurso("CLO", "SVCS")
 
-// Mapa GMT para calcular tiempos totales
-val gmtMap: Map[String, Int] =
-  aeropuertosCurso.map(a => a.Cod -> a.GMT).toMap
+//4 Itinerarios CLO-SVO
+val its3 = itsCurso("CLO", "SVO")
 
-// Helper para imprimir
-def showItinerario(it: Itinerario): String =
-  it.map(v => s"${v.Org}->${v.Dst}").mkString(" / ")
+//2 Itinerarios CLO-MEX
+val its4 = itsCurso("CLO", "MEX")
 
-println("\n===== SECCIÓN 2.1.1 — Encontrando itinerarios =====")
-
-// Secuencial
-val rSeq = its("CLO", "SVO")
-
-println("\n>>> RESULTADOS SECUENCIALES (itinerarios)")
-println(s"Total: ${rSeq.length}")
-rSeq.zipWithIndex.foreach { case (it, i) =>
-  println(s"  Seq ${i+1}: " + showItinerario(it))
-}
-
-// Paralelo
-val rPar = itsPar("CLO", "SVO")
-
-println("\n>>> RESULTADOS PARALELOS (itinerariosPar)")
-println(s"Total: ${rPar.length}")
-rPar.zipWithIndex.foreach { case (it, i) =>
-  println(s"  Par ${i+1}: " + showItinerario(it))
-}
-
-// Comparación
-println("\n>>> ¿SECUENCIAL == PARALELO?")
-println(rSeq == rPar)  // true si funciona bien
+//2 Itinerarios CTG-PTY
+val its5 = itsCurso("CTG", "PTY")
 
 
+//Pruebas para 3.2 ENUNCIADO (Correspondiente a 2.1.2)
+//Devuelven exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
+val itsTiempoCurso = itinerariosTiempo(vuelosCurso, aeropuertosCurso)
+//Prueba itinerariosTiempo
+val itst1 = itsTiempoCurso("MID", "SVCS")
+val itst2 = itsTiempoCurso("CLO", "SVCS")
 
-// ============================
-// 2.1.2 — Minimizar tiempo total
-// ============================
+//4 Itinerarios CLO-SVO
+val itst3 = itsTiempoCurso("CLO", "SVO")
 
-println("\n===== SECCIÓN 2.1.2 — Minimizar tiempo total =====")
+//2 Itinerarios CLO-MEX
+val itst4 = itsTiempoCurso("CLO", "MEX")
 
-// Secuencial
-val rSeqT = itsTiempo("CLO", "SVO")
+//2 Itinerarios CTG-PTY
+val itst5 = itsTiempoCurso("CTG", "PTY")
 
-println("\n>>> ITINERARIOS TIEMPO — SECUENCIAL")
-rSeqT.zipWithIndex.foreach { case (it, i) =>
-  val t = tiempoTotal(it, gmtMap)
-  println(s"  Seq #${i+1} ($t min): " + showItinerario(it))
-}
 
-// Paralelo
-val rParT = itsTiempoPar("CLO", "SVO")
+//Pruebas para 3.3 ENUNCIADO (Correspondiente a 2.1.3)
+//Devuelven exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
+val itsEscalasCurso = itinerariosEscalas(vuelosCurso, aeropuertosCurso)
+//Pruebas itinerariosEscalas
+val itsc1 = itsEscalasCurso("MID", "SVCS")
+val itsc2 = itsEscalasCurso("CLO", "SVCS")
 
-println("\n>>> ITINERARIOS TIEMPO — PARALELO")
-rParT.zipWithIndex.foreach { case (it, i) =>
-  val t = tiempoTotal(it, gmtMap)
-  println(s"  Par #${i+1} ($t min): " + showItinerario(it))
-}
-//Ojo: aca son 3 ya que se toman 3 para calcular el tiempo
+//4 Itinerarios CLO-SVO RR SALIDAS EN ORDEN DISTINTO
+val itsc3 = itsEscalasCurso("CLO", "SVO")
 
-// Comparación
-println("\n>>> ¿SECUENCIAL == PARALELO? (tiempo mínimo)")
-println(rSeqT == rParT)
+//2 Itinerarios CLO-MEX
+val itsc4 = itsEscalasCurso("CLO", "MEX")
+
+//2 Itinerarios CTG-PTY
+val itsc5 = itsEscalasCurso("CTG", "PTY")
+
+
+
+//Pruebas para 3.4 ENUNCIADO (Correspondiente a 2.1.4)
+//Devuelven exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
+val itsAireCurso = itinerariosAire(vuelosCurso, aeropuertosCurso)
+//Pruebas itinerariosAire
+val itsa1 = itsAireCurso("MID", "SVCS")
+val itsa2 = itsAireCurso("CLO", "SVCS")
+
+//4 Itinerarios CLO-SVO RR, SALIDA DIFERENTE 
+val itsa3 = itsAireCurso("CLO", "SVO")
+
+//2 Itinerarios CLO-MEX
+val itsa4 = itsAireCurso("CLO", "MEX")
+
+//2 Itinerarios CTG-PTY
+val itsa5 = itsAireCurso("CTG", "PTY")
+
+
+//Pruebas para 3.5 ENUNCIADO (Correspondiente a 2.1.5)
+//Devuelven exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
+val itsSalidaCurso = itinerarioSalida(vuelosCurso, aeropuertosCurso)
+//Pruebas itinerariosSalida
+val itsal1 = itsSalidaCurso("CTG", "PTY", 11, 40)
+val itsal2 = itsSalidaCurso("CTG", "PTY", 11, 55)
+val itsal3 = itsSalidaCurso("CTG", "PTY", 10, 30) //RR DEVUELVE LISTA VACIA, ALGO Q NO DEBE SER.
+
+
+
+
