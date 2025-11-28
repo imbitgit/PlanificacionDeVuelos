@@ -62,6 +62,7 @@ package object Itinerarios {
   /** Minutos que tiene un día completo (24 horas). */
   val DayMinutes: Int = 24 * 60
 
+
   /**
    * Ajusta un tiempo t para que sea mayor o igual que "after",
    * sumando días completos (de 24h) si es necesario.
@@ -82,6 +83,23 @@ package object Itinerarios {
 
 
   /**
+   * Devuelve los primeros n elementos de una lista (o la lista completa
+   * si tiene menos de n elementos).
+   *
+   * Se usa en:
+   *   - (2.1.2) itinerariosTiempo
+   *   - (2.1.3) itinerariosEscalas
+   *   - (2.1.4) itinerariosAire
+   *     para limitar la respuesta a lo pedido en el enunciado (máximo 3 itinerarios).
+   */
+  def primerosN[A](n: Int, xs: List[A]): List[A] = (n, xs) match {
+    case (_, Nil) => Nil // lista vacía -> nada que devolver
+    case (0, _) => Nil // ya tomamos n elementos
+    case (k, h :: t) => h :: primerosN(k - 1, t)
+  }
+
+
+  /**
    *Número total de escalas de un itinerario.
    * Se usa en (2.1.3) Número total de escalas de un itinerario.
    * Según el enunciado, hay dos tipos de escalas:
@@ -92,8 +110,7 @@ package object Itinerarios {
    * escalasTotales = (número de cambios de avión) + sum(Esc de cada vuelo)
    * = (it.length - 1) + it.map(_.Esc).sum, si no es vacío.
    */
-
-
+  
    def escalasTotales(it: Itinerario): Int = it match {
      case Nil => 0
      case _=> (it.length - 1) + it.map(_.Esc).sum
@@ -278,9 +295,13 @@ package object Itinerarios {
     (c1: String, c2: String) => {
       val its = todosItinerarios(c1, c2)               // todos los itinerarios posibles
       val ordenados = its.sortBy(it => tiempoTotal(it, gmtMap))
-      ordenados.take(3)                                // límite de 3 como pide el enunciado
+      primerosN(3, ordenados)
     }
   }
+
+  // =========================
+  // F3: itinerariosEscalas (2.1.3)
+  // =========================
 
   // =========================
   // F3: itinerariosEscalas (2.1.3)
@@ -291,18 +312,38 @@ package object Itinerarios {
    *
    * Devuelve hasta 3 itinerarios entre cod1 y cod2 con menor cantidad
    * de escalas totales (cambios de avión + escalas técnicas).
+   * En caso de empate:
+   *   - se prefieren menos vuelos en el itinerario,
+   *   - y luego menor tiempo total de viaje.
    */
   def itinerariosEscalas(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
     val todosItinerarios = itinerarios(vuelos, aeropuertos)
 
+    // Mapa GMT para poder usar tiempoTotal como desempate
+    val gmtMap: Map[String, Int] =
+      aeropuertos.map(a => a.Cod -> a.GMT).toMap
+
     (c1: String, c2: String) => {
       val its = todosItinerarios(c1, c2)
-      val ordenados = its.sortBy(escalasTotales)
-      ordenados.take(3)
+
+      // Ordenamos por:
+      // 1) menos escalasTotales
+      // 2) menos vuelos (it.length)
+      // 3) menor tiempoTotal
+      val ordenados = its.sortBy { it =>
+        (
+          escalasTotales(it),
+          it.length,
+          tiempoTotal(it, gmtMap)
+        )
+      }
+
+      primerosN(3, ordenados)
     }
   }
+
 
   // =========================
   // F4: itinerariosAire (2.1.4)
@@ -313,19 +354,37 @@ package object Itinerarios {
    *
    * Devuelve hasta 3 itinerarios entre cod1 y cod2 que minimizan
    * la suma de distancias entre aeropuertos (tiempo en aire).
+   * En caso de empate:
+   *   - se prefieren menos escalas,
+   *   - y luego menor tiempo total de viaje.
    */
   def itinerariosAire(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
     val aeroMap = mapaAeropuertos(aeropuertos)
+    val gmtMap: Map[String, Int] =
+      aeropuertos.map(a => a.Cod -> a.GMT).toMap
+
     val todosItinerarios = itinerarios(vuelos, aeropuertos)
 
     (c1: String, c2: String) => {
       val its = todosItinerarios(c1, c2)
-      val ordenados = its.sortBy(it => tiempoAireTotal(it, aeroMap))
-      ordenados.take(3)
+
+      // Ordenamos por:
+      // 1) tiempo en aire (distancia total)
+      // 2) número de escalas
+      // 3) tiempo total de viaje
+      val ordenados = its.sortBy { it =>
+        (
+          tiempoAireTotal(it, aeroMap), // criterio principal
+          escalasTotales(it), // desempate 1: menos escalas
+          tiempoTotal(it, gmtMap) // desempate 2: menor tiempo total
+        )
+      }
+      primerosN(3, ordenados)
     }
   }
+
 
   // =========================
   // F5: itinerarioSalida (2.1.5)
@@ -364,16 +423,15 @@ package object Itinerarios {
       val its = todosItinerarios(c1, c2)
 
       // Para cada itinerario calculamos salida y llegada en UTC
+      // (misma lógica de tiempoTotal), pero **NO** filtramos por la hora de la cita,
+      // siguiendo la interpretación del profesor: se puede llegar el día anterior.
       val candidatos: List[(Itinerario, Int)] =
         its.flatMap {
           case Nil =>
             // Itinerario vacío: solo tiene sentido cuando c1 == c2.
-            // Si origen y destino son el mismo y la "cita" es allí,
-            // se puede interpretar que ya estamos a tiempo sin volar.
             if (c1 == c2) List((Nil, citaUTC)) else Nil
 
           case first :: rest =>
-            // ==== MISMA LÓGICA QUE tiempoTotal, pero guardando dep0 y lastArr ====
             val dep0 = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
             val arr0Raw = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
             val arr0Adj = adjust(dep0, arr0Raw)
@@ -386,12 +444,14 @@ package object Itinerarios {
                 val arrAdj = adjust(depAdj, arrRaw)
                 (depAdj, arrAdj)
             }
-            // =============================================================
 
-            // Solo consideramos itinerarios que llegan a tiempo
-            if (lastArr <= citaUTC) List((first :: rest, dep0))
-            else Nil
+            // Siguiendo el foro: cualquier itinerario que llega a cod2
+            // se puede interpretar como que llega algún día antes de la cita.
+            // Por tanto, TODOS son candidatos; la cita solo se usa para
+            // decidir cuál salida queremos (la más tarde posible).
+            List((first :: rest, dep0))
         }
+
 
       if (candidatos.isEmpty) Nil
       else {
