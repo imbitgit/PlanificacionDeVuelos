@@ -1,85 +1,137 @@
 import Datos._
-import common._
-import Itinerarios._
-import scala.collection.parallel.CollectionConverters._
-import scala.collection.parallel.ParSeq
-
+import common._          // parallel / task: paralelismo de tareas
+import Itinerarios._     // reutilizamos helpers y versiones secuenciales
 /**
  * Package object ItinerariosPar
  *
- * Contiene las versiones *paralelas* de:
- *   - (2.1.1) itinerarios        → itinerariosPar
- *   - (2.1.2) itinerariosTiempo  → itinerariosTiempoPar
- *   - (2.1.3) itinerariosEscalas → itinerariosEscalasPar
- *   - (2.1.4) itinerariosAire    → itinerariosAirePar
+ * Contiene las versiones **paralelas** de las funciones del paquete Itinerarios:
+ *   - F1p: itinerariosPar        (2.1.1)  → todos los itinerarios (DFS paralelo).
+ *   - F2p: itinerariosTiempoPar  (2.1.2)  → minimiza tiempo total de viaje.
+ *   - F3p: itinerariosEscalasPar (2.1.3)  → minimiza número de escalas.
+ *   - F4p: itinerariosAirePar    (2.1.4)  → minimiza tiempo en el aire.
+ *   - F5p: itinerarioSalidaPar   (2.1.5)  → optimiza la hora de salida.
  *
- * La idea principal es reutilizar la lógica funcional de Itinerarios,
- * pero paralelizando los pasos intensivos usando colecciones paralelas (scala.collections.parallel).
+ * Todas las funciones hacen esencialmente lo mismo que sus versiones secuenciales,
+ * pero usando principalmente **paralelismo de tareas** (parallel) y, donde tiene
+ * sentido, paralelismo de datos (map paralelo por divide-and-conquer).
  */
 package object ItinerariosPar {
 
   // =========================
-  // F1 paralelo: itinerariosPar (2.1.1)
+  // Helpers paralelos
   // =========================
 
   /**
-   * F1 — Versión paralela de la búsqueda de itinerarios.
+   * Umbral genérico para decidir si vale la pena crear tareas.
+   * Listas con tamaño <= UMBRAL_LISTA se procesan secuencialmente.
+   */
+  private val UMBRAL_LISTA = 8
+
+  /**
+   * mapPar – Versión paralela de map sobre listas.
    *
-   * Devuelve una función (cod1, cod2) => List[Itinerario] que genera
-   * *todos* los itinerarios posibles sin ciclos, igual que en la versión secuencial,
-   * pero paralelizando la exploración de los vuelos salientes desde cada aeropuerto.
+   * Recibe:
+   *   xs → lista de entrada.
+   *   f  → función a aplicar a cada elemento.
    *
-   * Estrategia:
-   *   1. Agrupar los vuelos por aeropuerto de origen.
-   *   2. Hacer una búsqueda en profundidad (DFS).
-   *   3. Paralelizar la expansión de cada vuelo saliente mediante `.par.map`.
-   *   4. Asegurar que no se repitan aeropuertos ya visitados.
+   * Estrategia (paralelismo de tareas + datos):
+   *   - Si la lista es pequeña (<= UMBRAL_LISTA), usamos xs.map(f).
+   *   - Si es grande, la partimos en dos mitades (izq, der) y aplicamos
+   *     recursivamente mapPar a cada mitad en **tareas paralelas** usando `parallel`.
+   *   - Al final concatenamos los resultados.
+   */
+  private def mapPar[A, B](xs: List[A])(f: A => B): List[B] = {
+    if (xs.length <= UMBRAL_LISTA) xs.map(f)
+    else {
+      val (izq, der) = xs.splitAt(xs.length / 2)
+      val (resIzq, resDer) = parallel(
+        mapPar(izq)(f),
+        mapPar(der)(f)
+      )
+      resIzq ::: resDer
+    }
+  }
+
+  // =========================
+  // F1p: itinerariosPar (2.1.1)
+  // =========================
+
+  /**
+   * F1p – Encontrando itinerarios en paralelo.
+   *
+   * Versión paralela de F1 (itinerarios).
+   *
+   * Construye una función que, dados dos códigos de aeropuerto (cod1, cod2),
+   * devuelve TODOS los itinerarios posibles (listas de vuelos) que van de
+   * cod1 a cod2, sin repetir aeropuertos, pero usando **paralelismo de tareas**
+   * para explorar el árbol de búsqueda (DFS).
+   *
+   * Idea:
+   *   - Reutilizamos la misma estructura de búsqueda en profundidad que en
+   *     la versión secuencial.
+   *   - Para cada aeropuerto, tomamos la lista de vuelos salientes y la
+   *     exploramos con una función recursiva que:
+   *        * para listas pequeñas, recorre secuencialmente;
+   *        * para listas grandes, divide en dos mitades y usa `parallel`
+   *          para explorar cada mitad en una tarea distinta.
    */
   def itinerariosPar(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
-    // Estructura: origen -> lista de vuelos que salen de ese origen
-    val porOrigen: Map[String, List[Vuelo]] = vuelos.groupBy(_.Org)
+    // Preprocesamos los vuelos una sola vez: origen -> lista de vuelos
+    val porOrigen: Map[String, List[Vuelo]] =
+      vuelos.groupBy(_.Org)
 
     /**
-     * Función recursiva paralela.
+     * DFS paralelo que construye todos los itinerarios.
      *
      * Parámetros:
-     *   - origen: aeropuerto actual.
-     *   - destino: aeropuerto final deseado.
-     *   - visitados: registro de aeropuertos ya visitados (evita ciclos).
-     *
-     * En cada paso:
-     *   - Obtenemos los vuelos salientes de "origen".
-     *   - Filtramos los que causarían un ciclo.
-     *   - Ejecutamos en paralelo cada rama de búsqueda usando `.par`.
-     *   - Anteponemos el vuelo actual al itinerario recursivo.
+     *   origen    → aeropuerto actual.
+     *   destino   → aeropuerto destino final.
+     *   visitados → conjunto de aeropuertos ya visitados
+     *               en el camino actual (para evitar ciclos).
      */
-      def buscar(origen: String, destino: String, visitados: Set[String]): List[Itinerario] =
-      if (origen == destino)
-        // Caso base: ya estamos en destino → un único itinerario vacío.
+    def buscar(origen: String, destino: String, visitados: Set[String]): List[Itinerario] =
+      if (origen == destino) {
+        // Caso base: ya llegamos al destino → camino vacío.
         List(Nil)
-      else {
-        val salientes = porOrigen.getOrElse(origen, Nil)
+      } else {
+        // Vuelos que salen de "origen" y no llevan a aeropuertos ya visitados
+        val salientes =
+          porOrigen.getOrElse(origen, Nil).filter(v => !visitados(v.Dst))
 
-        // PAR: procesamos todas las expansiones en paralelo.
-        val resultados: ParSeq[List[Itinerario]] =
-          salientes.par
-            .filter(v => !visitados(v.Dst)) // evitamos ciclos
-            .map { vuelo =>
-              // Llamada recursiva en paralelo a cada destino alcanzable
-              buscar(vuelo.Dst, destino, visitados + vuelo.Dst)
-                // Anteponemos el vuelo actual
-                .map(it => vuelo :: it)
+        /**
+         * Explora una lista de vuelos salientes.
+         *
+         * Si la lista es pequeña, se procesa secuencialmente.
+         * Si es grande, se parte en dos sublistas, y cada una se explora
+         * en una tarea distinta usando `parallel`.
+         */
+        def exploraLista(vs: List[Vuelo]): List[Itinerario] =
+          if (vs.length <= UMBRAL_LISTA) {
+            // Secuencial
+            vs.flatMap { v =>
+              buscar(v.Dst, destino, visitados + v.Dst).map(it => v :: it)
             }
+          } else {
+            // Paralelizamos en dos tareas
+            val (izq, der) = vs.splitAt(vs.length / 2)
+            val (itsIzq, itsDer) = parallel(
+              exploraLista(izq),
+              exploraLista(der)
+            )
+            itsIzq ::: itsDer
+          }
 
-        // Aplanamos la estructura ParSeq[List[Itinerario]] en List[Itinerario].
-        resultados.flatten.toList
+        exploraLista(salientes)
       }
 
     /**
-     * Devuelve la función solicitada:
-     *   (c1, c2) => todos los itinerarios posibles.
+     * Función que el usuario realmente invoca:
+     *   (cod1, cod2) => lista de itinerarios.
+     *
+     * Caso especial: si cod1 == cod2, por convenio devolvemos List(Nil),
+     * interpretado como “itinerario vacío” (ya estamos en el destino).
      */
     (c1: String, c2: String) =>
       if (c1 == c2) List(Nil)
@@ -87,167 +139,201 @@ package object ItinerariosPar {
   }
 
   // =========================
-  // F2 paralelo: itinerariosTiempoPar (2.1.2)
+  // F2p: itinerariosTiempoPar (2.1.2)
   // =========================
 
   /**
-   * F2 — Versión paralela del cálculo de los 3 itinerarios más rápidos.
+   * F2p – Minimización de tiempo total de viaje (versión paralela).
    *
-   * Devuelve una función (cod1, cod2) => List[Itinerario] que:
-   *   1. Obtiene *todos* los itinerarios usando itinerariosPar.
-   *   2. Calcula el tiempo total de cada itinerario *en paralelo*.
-   *   3. Ordena por tiempo total.
-   *   4. Devuelve los primeros 3.
+   * Versión paralela de F2 (itinerariosTiempo).
    *
-   * Uso de paralelismo:
-   *   - `.par.map` para calcular el tiempo total de N itinerarios simultáneamente.
+   * Construye una función que, dados dos códigos de aeropuerto (cod1, cod2),
+   * devuelve HASTA tres itinerarios con menor tiempo total de viaje,
+   * calculando en **paralelo** el tiempo total de cada itinerario.
+   *
+   * Tipo de paralelismo:
+   *   - Paralelismo de tareas + datos usando `mapPar` sobre la lista de
+   *     itinerarios.
    */
   def itinerariosTiempoPar(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
-    // Mapa código -> GMT para cálculos temporales
-    val gmtMap: Map[String, Int] = aeropuertos.map(a => a.Cod -> a.GMT).toMap
+    // Mapa códigoAeropuerto -> GMT, para usar en tiempoTotal
+    val gmtMap: Map[String, Int] =
+      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
 
     // Reutilizamos la versión paralela de F1
-    val itsFuncPar = itinerariosPar(vuelos, aeropuertos)
+    val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
 
-    /**
-     * Función resultante:
-     *   (c1, c2) => 3 itinerarios más rápidos.
-     */
     (c1: String, c2: String) => {
-      val its = itsFuncPar(c1, c2)  // todos los itinerarios en paralelo
+      val its = todosItinerariosPar(c1, c2)
 
-      // PAR: calcular el tiempo total de todos los itinerarios simultáneamente
-      val calificados: ParSeq[(Itinerario, Int)] =
-        its.par.map(it => (it, tiempoTotal(it, gmtMap)))
+      // mapPar: calculamos en paralelo (it, tiempoTotal(it))
+      val calificados: List[(Itinerario, Int)] =
+        mapPar(its) { it =>
+          (it, tiempoTotal(it, gmtMap))
+        }
 
-      // Convertimos a lista normal, ordenamos por tiempo y tomamos 3
-      calificados.toList
-        .sortBy(_._2)
-        .map(_._1)
-        .take(3)
+      val ordenados: List[Itinerario] =
+        calificados.sortBy(_._2).map(_._1)
+
+      primerosN(3, ordenados)
     }
   }
 
-  // ============================================================
-  // F3 paralelo: itinerariosEscalasPar (2.1.3)
-  // ============================================================
+  // =========================
+  // F3p: itinerariosEscalasPar (2.1.3)
+  // =========================
 
   /**
-   * F3 — Versión paralela de la minimización de escalas.
+   * F3p – Minimización del número de escalas (versión paralela).
    *
-   * Devuelve una función (cod1, cod2) ⇒ List[Itinerario] que:
-   *   1. Obtiene todos los itinerarios mediante itinerariosPar.
-   *   2. Calcula en paralelo el número total de escalas de cada itinerario
-   *   usando escalasTotales (definida en Itinerarios).
-   *   3. Ordena por número de escalas ascendentes.
-   *   4. Devuelve hasta los primeros 3.
+   * Versión paralela de F3 (itinerariosEscalas).
    *
-   * El cálculo de escalas es independiente por itinerario,
-   * por lo cual paralelizarlo es seguro y eficiente.
+   * Devuelve hasta 3 itinerarios entre cod1 y cod2 con menor cantidad
+   * de escalas totales (cambios de avión + escalas técnicas).
+   *
+   * Criterios de ordenamiento (mismos que la versión secuencial):
+   *   1) Menor escalasTotales(it).
+   *   2) Menor número de vuelos (it.length).
+   *   3) Menor tiempo total de viaje (tiempoTotal).
+   *
+   * Tipo de paralelismo:
+   *   - Paralelismo de tareas + datos: usamos `mapPar` para calcular en
+   *     paralelo las métricas de cada itinerario.
    */
   def itinerariosEscalasPar(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
-    val itsFuncPar = itinerariosPar(vuelos, aeropuertos)
+    val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
+
+    // Mapa GMT para poder usar tiempoTotal como desempate
+    val gmtMap: Map[String, Int] =
+      aeropuertos.map(a => a.Cod -> a.GMT).toMap
 
     (c1: String, c2: String) => {
-      val its = itsFuncPar(c1, c2)
+      val its = todosItinerariosPar(c1, c2)
 
-      // PAR: calcular escalas cada itinerario simultáneamente
-      val calificados: ParSeq[(Itinerario, Int)] =
-        its.par.map(it => (it, escalasTotales(it)))
+      // mapPar: calculamos en paralelo las tuplas (it, (escalas, len, tiempo))
+      val calificados: List[(Itinerario, (Int, Int, Int))] =
+        mapPar(its) { it =>
+          val esc  = escalasTotales(it)
+          val len  = it.length
+          val tTot = tiempoTotal(it, gmtMap)
+          (it, (esc, len, tTot))
+        }
 
-      calificados.toList
-        .sortBy(_._2)
-        .map(_._1)
-        .take(3)
+      val ordenados: List[Itinerario] =
+        calificados.sortBy(_._2).map(_._1)
+
+      primerosN(3, ordenados)
     }
   }
 
-  // ============================================================
-  // F4 paralelo: itinerariosAirePar (2.1.4)
-  // ============================================================
+  // =========================
+  // F4p: itinerariosAirePar (2.1.4)
+  // =========================
 
   /**
-   * F4 — Versión paralela de la minimización del tiempo en el aire.
+   * F4p – Minimización del tiempo en el aire (versión paralela).
    *
-   * Devuelve una función (cod1, cod2) ⇒ List[Itinerario] que:
-   *   1. Genera todos los itinerarios usando itinerariosPar.
-   *   2. Calcula en paralelo el "tiempo en el aire" mediante tiempoAireTotal.
-   *   3. Ordena crecientemente dichas distancias acumuladas.
-   *   4. Devuelve los 3 mejores.
+   * Versión paralela de F4 (itinerariosAire).
    *
-   * Este cálculo es totalmente independiente por itinerario,
-   * por lo que se paraleliza con `.par.map`.
+   * Devuelve hasta 3 itinerarios entre cod1 y cod2 que minimizan
+   * la suma de distancias entre aeropuertos (tiempo en aire).
+   *
+   * Criterios de ordenamiento (mismos que la versión secuencial):
+   *   1) Menor tiempo en el aire (tiempoAireTotal).
+   *   2) Menos escalasTotales.
+   *   3) Menor tiempo total de viaje (tiempoTotal).
+   *
+   * Tipo de paralelismo:
+   *   - Paralelismo de tareas + datos: usamos `mapPar` para calcular en
+   *     paralelo las métricas de “tiempo en aire”.
    */
   def itinerariosAirePar(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
-    val aeroMap = aeropuertos.map(a => a.Cod -> a).toMap
-    val itsFuncPar = itinerariosPar(vuelos, aeropuertos)
+    val aeroMap = mapaAeropuertos(aeropuertos)
+    val gmtMap: Map[String, Int] =
+      aeropuertos.map(a => a.Cod -> a.GMT).toMap
+
+    val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
 
     (c1: String, c2: String) => {
-      val its = itsFuncPar(c1, c2)
+      val its = todosItinerariosPar(c1, c2)
 
-      // PAR: cálculo simultáneo de tiempo en aire
-      val calificados: ParSeq[(Itinerario, Double)] =
-        its.par.map(it => (it, tiempoAireTotal(it, aeroMap)))
+      // mapPar: calculamos en paralelo (it, (aire, escalas, tiempo))
+      val calificados: List[(Itinerario, (Double, Int, Int))] =
+        mapPar(its) { it =>
+          val aire = tiempoAireTotal(it, aeroMap)
+          val esc  = escalasTotales(it)
+          val tTot = tiempoTotal(it, gmtMap)
+          (it, (aire, esc, tTot))
+        }
 
-      calificados.toList
-        .sortBy(_._2)
-        .map(_._1)
-        .take(3)
+      val ordenados: List[Itinerario] =
+        calificados.sortBy(_._2).map(_._1)
+
+      primerosN(3, ordenados)
     }
   }
 
-  // ============================================================
-  // F5 paralelo: itinerarioSalidaPar (2.1.5)
-  // ============================================================
+  // =========================
+  // F5p: itinerarioSalidaPar (2.1.5)
+  // =========================
 
   /**
-   * F5 — Versión paralela de la optimización de la hora de salida.
+   * F5p – Optimización de la hora de salida (versión paralela).
    *
-   * Construye una función (cod1, cod2, hCita, mCita) ⇒ Itinerario que:
-   *   1. Obtiene todos los itinerarios posibles mediante itinerariosPar (ya paralela).
-   *      2. Para cada itinerario, calcula EN PARALELO:
-   *        - la hora de salida en UTC,
-   *        - la hora de llegada total en UTC (misma lógica que tiempoTotal).
-   *          3. Filtra aquellos que llegan ANTES o EXACTAMENTE a la hora de la cita.
-   *          4. Entre ellos, selecciona el itinerario cuya salida sea lo más tarde posible.
+   * Versión paralela de F5 (itinerarioSalida).
    *
-   * Si ningún itinerario llega a tiempo, devuelve Nil.
+   * Construye una función que, dados:
+   *   - cod1: aeropuerto de origen,
+   *   - cod2: aeropuerto de destino,
+   *   - hCita, mCita: hora local de la cita en el aeropuerto de destino,
+   *
+   * selecciona un itinerario que:
+   *   1. (Siguiendo la interpretación del foro del profesor) se considera
+   *      que llega algún día antes de la cita, por lo que todos los
+   *      itinerarios cod1 → cod2 son candidatos.
+   *   2. Entre todos los candidatos, se elige el que tiene la **hora de
+   *      salida en cod1 lo más tarde posible**.
+   *
+   * Si no hay itinerarios entre cod1 y cod2, devuelve el itinerario vacío (Nil).
+   *
+   * Tipo de paralelismo:
+   *   - Paralelismo de tareas + datos: usamos `mapPar` para calcular en
+   *     paralelo, para cada itinerario, su hora de salida en UTC.
    */
   def itinerarioSalidaPar(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String, Int, Int) => Itinerario = {
 
-    // Necesitamos GMT por aeropuerto para convertir a UTC
+    // Mapa código -> GMT para convertir horas locales a UTC
     val gmtMap: Map[String, Int] =
       aeropuertos.map(a => a.Cod -> a.GMT).toMap
 
-    // Reutilizamos F1 versión paralela
-    val itsPar = itinerariosPar(vuelos, aeropuertos)
+    // Generamos los itinerarios usando la versión paralela de F1
+    val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
 
     (c1: String, c2: String, hCita: Int, mCita: Int) => {
 
-      // Convertimos la hora local de la cita en cod2 → UTC
+      // Hora de la cita en UTC, usando el GMT del aeropuerto de destino
       val citaUTC = utcMinutes(hCita, mCita, gmtMap(c2))
 
-      // Todos los itinerarios en paralelo
-      val its = itsPar(c1, c2)
+      val its = todosItinerariosPar(c1, c2)
 
-      // Evaluamos en paralelo salida/llegada para cada itinerario
-      val candidatosPar: ParSeq[(Itinerario, Int)] =
-        its.par.flatMap {
+      // mapPar: para cada itinerario calculamos en paralelo su hora de salida dep0.
+      val candidatos: List[(Itinerario, Int)] =
+        mapPar(its) {
           case Nil =>
-            // Caso especial: origen y destino iguales
-            if (c1 == c2) ParSeq((Nil, citaUTC))
-            else ParSeq.empty
+            // Itinerario vacío: solo tiene sentido cuando origen = destino.
+            if (c1 == c2) (Nil, citaUTC)
+            else         (Nil, Int.MinValue) // marcador “no válido”
 
           case first :: rest =>
-            // === MISMA LÓGICA QUE tiempoTotal + guardar dep0 ===
-            val dep0 = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
+            // Misma lógica de tiempos que en la versión secuencial.
+            val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
             val arr0Raw = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
             val arr0Adj = adjust(dep0, arr0Raw)
 
@@ -259,26 +345,23 @@ package object ItinerariosPar {
                 val arrAdj = adjust(depAdj, arrRaw)
                 (depAdj, arrAdj)
             }
-            // ================================================
 
-            // Solo tomamos itinerarios que llegan a tiempo
-            if (lastArr <= citaUTC)
-              ParSeq((first :: rest, dep0))
-            else
-              ParSeq.empty
+            // Todos los itinerarios que llegan a cod2 son considerados;
+            // usamos dep0 (hora de salida) para escoger el “más tarde”.
+            (first :: rest, dep0)
+        }.filter {
+          // Filtramos el marcador de “no válido” cuando c1 != c2.
+          case (Nil, dep) => dep != Int.MinValue
+          case _          => true
         }
 
-      val candidatos = candidatosPar.toList
-
-      // Si no hay itinerarios viables → Nil
       if (candidatos.isEmpty) Nil
       else {
-        // Elegimos el que sale LO MÁS TARDE (max depUTC)
-        val (mejor, _) =
+        // Elegimos el itinerario cuya hora de salida (en UTC) es mayor.
+        val (mejorItinerario, _) =
           candidatos.maxBy { case (_, depUTC) => depUTC }
-        mejor
+        mejorItinerario
       }
     }
   }
 }
-

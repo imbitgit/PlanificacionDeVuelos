@@ -27,7 +27,7 @@ package object Itinerarios {
    * Se usa en (2.1.4) itinerariosAire -> para obtener coordenadas X,Y
    * Se usa en (2.1.5) itinerarioSalida  -> para convertir horas a UTC.
    */
-  private def mapaAeropuertos(aeropuertos: List[Aeropuerto]): Map[String, Aeropuerto] =
+  def mapaAeropuertos(aeropuertos: List[Aeropuerto]): Map[String, Aeropuerto] =
     aeropuertos.map(a => a.Cod -> a).toMap
 
   /**
