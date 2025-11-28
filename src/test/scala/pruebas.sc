@@ -64,7 +64,7 @@ val itsAireCurso = itinerariosAire(vuelosCurso, aeropuertosCurso)
 val itsa1 = itsAireCurso("MID", "SVCS")
 val itsa2 = itsAireCurso("CLO", "SVCS")
 
-//4 Itinerarios CLO-SVO RR, SALIDA DIFERENTE 
+//4 Itinerarios CLO-SVO
 val itsa3 = itsAireCurso("CLO", "SVO")
 
 //2 Itinerarios CLO-MEX
