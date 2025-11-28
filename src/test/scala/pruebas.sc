@@ -84,4 +84,102 @@ val itsal3 = itsSalidaCurso("CTG", "PTY", 10, 30) //RR DEVUELVE LISTA VACIA, ALG
 
 
 
+// ======================================================
+// PRUEBAS VERSIONES PARALELAS vs SECUENCIALES
+// Comparamos TODOS los casos que usamos en el enunciado.
+// ======================================================
 
+// --------- Casos origen/destino compartidos por F1–F4 ---------
+
+val casosOD: List[(String, String)] = List(
+  ("MID", "SVCS"),
+  ("CLO", "SVCS"),
+  ("CLO", "SVO"),
+  ("CLO", "MEX"),
+  ("CTG", "PTY")
+)
+
+// ---------------- F1 vs F1p: itinerarios / itinerariosPar ----------------
+
+val itsCursoPar = itinerariosPar(vuelosCurso, aeropuertosCurso)
+
+val chequeoF1: List[(String, Boolean)] =
+  casosOD.map { case (o, d) =>
+    val sec = itsCurso(o, d)
+    val par = itsCursoPar(o, d)
+    val ok  = (sec == par)
+    (s"F1 itinerarios $o -> $d", ok)
+  }
+
+chequeoF1   // ver en el worksheet: todos deberían ser (…,true)
+
+
+// -------------- F2 vs F2p: itinerariosTiempo / itinerariosTiempoPar --------------
+
+val itsTiempoCursoPar = itinerariosTiempoPar(vuelosCurso, aeropuertosCurso)
+
+val chequeoF2: List[(String, Boolean)] =
+  casosOD.map { case (o, d) =>
+    val sec = itsTiempoCurso(o, d)
+    val par = itsTiempoCursoPar(o, d)
+    val ok  = (sec == par)
+    (s"F2 itinerariosTiempo $o -> $d", ok)
+  }
+
+chequeoF2   // todos deberían ser true
+
+
+// -------------- F3 vs F3p: itinerariosEscalas / itinerariosEscalasPar --------------
+
+val itsEscalasCursoPar = itinerariosEscalasPar(vuelosCurso, aeropuertosCurso)
+
+val chequeoF3: List[(String, Boolean)] =
+  casosOD.map { case (o, d) =>
+    val sec = itsEscalasCurso(o, d)
+    val par = itsEscalasCursoPar(o, d)
+    val ok  = (sec == par)
+    (s"F3 itinerariosEscalas $o -> $d", ok)
+  }
+
+chequeoF3   // todos deberían ser true
+
+
+// -------------- F4 vs F4p: itinerariosAire / itinerariosAirePar --------------
+
+val itsAireCursoPar = itinerariosAirePar(vuelosCurso, aeropuertosCurso)
+
+val chequeoF4: List[(String, Boolean)] =
+  casosOD.map { case (o, d) =>
+    val sec = itsAireCurso(o, d)
+    val par = itsAireCursoPar(o, d)
+    val ok  = (sec == par)
+    (s"F4 itinerariosAire $o -> $d", ok)
+  }
+
+chequeoF4   // todos deberían ser true
+
+
+// -------------- F5 vs F5p: itinerarioSalida / itinerarioSalidaPar --------------
+
+val itsSalidaCursoPar = itinerarioSalidaPar(vuelosCurso, aeropuertosCurso)
+
+// mismos tres casos que el enunciado / tus pruebas
+val casosSalida: List[(String, String, Int, Int, String)] = List(
+  ("CTG", "PTY", 11, 40, "F5 salida CTG->PTY 11:40"),
+  ("CTG", "PTY", 11, 55, "F5 salida CTG->PTY 11:55"),
+  ("CTG", "PTY", 10, 30, "F5 salida CTG->PTY 10:30")
+)
+
+val chequeoF5: List[(String, Boolean)] =
+  casosSalida.map { case (o, d, h, m, nombre) =>
+    val sec = itsSalidaCurso(o, d, h, m)
+    val par = itsSalidaCursoPar(o, d, h, m)
+    val ok  = (sec == par)
+    (nombre, ok)
+  }
+
+chequeoF5   // todas dan true asi que si funciona o devuelven lo mismo q la secuencial
+
+
+//ACA EMPIEZAN LAS PRUEBAS QUE SE NOS DIO, ESTO TIENE QUE IR EN EL INFORME, DONDE SE COMPARA CADA COSA
+//COMPLETAR
