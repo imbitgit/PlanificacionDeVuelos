@@ -1,8 +1,8 @@
 import Datos._
 import common._          // parallel / task: paralelismo de tareas
 import Itinerarios._     // reutilizamos helpers y versiones secuenciales
+
 /**
- * Package object ItinerariosPar
  *
  * Contiene las versiones **paralelas** de las funciones del paquete Itinerarios:
  *   - F1p: itinerariosPar        (2.1.1)  → todos los itinerarios (DFS paralelo).
@@ -40,16 +40,17 @@ package object ItinerariosPar {
    *     recursivamente mapPar a cada mitad en **tareas paralelas** usando `parallel`.
    *   - Al final concatenamos los resultados.
    */
-  private def mapPar[A, B](xs: List[A])(f: A => B): List[B] = {
-    if (xs.length <= UMBRAL_LISTA) xs.map(f)
-    else {
+  private def mapPar[A, B](xs: List[A])(f: A => B): List[B] = xs match {
+    case Nil => Nil
+    case _ if xs.length <= UMBRAL_LISTA =>
+      xs.map(f)
+    case _ =>
       val (izq, der) = xs.splitAt(xs.length / 2)
       val (resIzq, resDer) = parallel(
         mapPar(izq)(f),
         mapPar(der)(f)
       )
       resIzq ::: resDer
-    }
   }
 
   // =========================
@@ -79,8 +80,7 @@ package object ItinerariosPar {
   : (String, String) => List[Itinerario] = {
 
     // Preprocesamos los vuelos una sola vez: origen -> lista de vuelos
-    val porOrigen: Map[String, List[Vuelo]] =
-      vuelos.groupBy(_.Org)
+    val porOrigen: Map[String, List[Vuelo]] = vuelos.groupBy(_.Org)
 
     /**
      * DFS paralelo que construye todos los itinerarios.
@@ -107,13 +107,14 @@ package object ItinerariosPar {
          * Si es grande, se parte en dos sublistas, y cada una se explora
          * en una tarea distinta usando `parallel`.
          */
-        def exploraLista(vs: List[Vuelo]): List[Itinerario] =
-          if (vs.length <= UMBRAL_LISTA) {
+        def exploraLista(vs: List[Vuelo]): List[Itinerario] = vs match {
+          case Nil => Nil
+          case _ if vs.length <= UMBRAL_LISTA =>
             // Secuencial
             vs.flatMap { v =>
               buscar(v.Dst, destino, visitados + v.Dst).map(it => v :: it)
             }
-          } else {
+          case _ =>
             // Paralelizamos en dos tareas
             val (izq, der) = vs.splitAt(vs.length / 2)
             val (itsIzq, itsDer) = parallel(
@@ -121,21 +122,14 @@ package object ItinerariosPar {
               exploraLista(der)
             )
             itsIzq ::: itsDer
-          }
+        }
 
         exploraLista(salientes)
       }
 
-    /**
-     * Función que el usuario realmente invoca:
-     *   (cod1, cod2) => lista de itinerarios.
-     *
-     * Caso especial: si cod1 == cod2, por convenio devolvemos List(Nil),
-     * interpretado como “itinerario vacío” (ya estamos en el destino).
-     */
+    // Función que el usuario invoca
     (c1: String, c2: String) =>
-      if (c1 == c2) List(Nil)
-      else buscar(c1, c2, Set(c1))
+      if (c1 == c2) List(Nil) else buscar(c1, c2, Set(c1))
   }
 
   // =========================
@@ -170,9 +164,7 @@ package object ItinerariosPar {
 
       // mapPar: calculamos en paralelo (it, tiempoTotal(it))
       val calificados: List[(Itinerario, Int)] =
-        mapPar(its) { it =>
-          (it, tiempoTotal(it, gmtMap))
-        }
+        mapPar(its) { it => (it, tiempoTotal(it, gmtMap)) }
 
       val ordenados: List[Itinerario] =
         calificados.sortBy(_._2).map(_._1)
@@ -209,7 +201,7 @@ package object ItinerariosPar {
 
     // Mapa GMT para poder usar tiempoTotal como desempate
     val gmtMap: Map[String, Int] =
-      aeropuertos.map(a => a.Cod -> a.GMT).toMap
+      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
 
     (c1: String, c2: String) => {
       val its = todosItinerariosPar(c1, c2)
@@ -256,7 +248,7 @@ package object ItinerariosPar {
 
     val aeroMap = mapaAeropuertos(aeropuertos)
     val gmtMap: Map[String, Int] =
-      aeropuertos.map(a => a.Cod -> a.GMT).toMap
+      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
 
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
 
@@ -311,7 +303,7 @@ package object ItinerariosPar {
 
     // Mapa código -> GMT para convertir horas locales a UTC
     val gmtMap: Map[String, Int] =
-      aeropuertos.map(a => a.Cod -> a.GMT).toMap
+      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
 
     // Generamos los itinerarios usando la versión paralela de F1
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
@@ -332,7 +324,6 @@ package object ItinerariosPar {
             else         (Nil, Int.MinValue) // marcador “no válido”
 
           case first :: rest =>
-            // Misma lógica de tiempos que en la versión secuencial.
             val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
             val arr0Raw = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
             val arr0Adj = adjust(dep0, arr0Raw)
@@ -355,12 +346,12 @@ package object ItinerariosPar {
           case _          => true
         }
 
-      if (candidatos.isEmpty) Nil
-      else {
-        // Elegimos el itinerario cuya hora de salida (en UTC) es mayor.
-        val (mejorItinerario, _) =
-          candidatos.maxBy { case (_, depUTC) => depUTC }
-        mejorItinerario
+      candidatos match {
+        case Nil => Nil
+        case _ =>
+          val (mejorItinerario, _) =
+            candidatos.maxBy { case (_, depUTC) => depUTC }
+          mejorItinerario
       }
     }
   }

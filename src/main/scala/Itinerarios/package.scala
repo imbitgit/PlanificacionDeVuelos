@@ -3,6 +3,13 @@ import Datos._
 /**
  * Package object Itinerarios
  *
+ *    Version Secuencial de las Funciones
+ *   - Usa recursión (DFS) para generar itinerarios.
+ *   - Usa reconocimiento de patrones (pattern matching con `case`).
+ *   - Usa funciones de alto orden: map, flatMap, filter, foldLeft, sortBy, maxBy, collect.
+ *   - Usa expresiones for para construir listas de itinerarios.
+ *   - Encapsula lógica compleja en funciones auxiliares (helpers y funciones internas).
+ *
  * Contiene:
  *   - Helpers comunes para tiempos, escalas y distancias.
  *   - F1: itinerarios        (2.1.1)  → todos los itinerarios.
@@ -11,66 +18,72 @@ import Datos._
  *   - F4: itinerariosAire    (2.1.4)  → minimiza tiempo en el aire.
  *   - F5: itinerarioSalida   (2.1.5)  → optimiza la hora de salida.
  */
-
 package object Itinerarios {
 
-  // =========================
+  // ======================================================
   // Helpers comunes
-  // =========================
+  // ======================================================
 
   /**
    * Construye un mapa códigoAeropuerto -> Aeropuerto.
    *
-   * Esto permite acceder en O(1) al aeropuerto a partir de su código,
-   * en lugar de recorrer la lista cada vez.
-   * Se usa en (2.1.2) itinerariosTiempo -> para obtener GMT
-   * Se usa en (2.1.4) itinerariosAire -> para obtener coordenadas X,Y
-   * Se usa en (2.1.5) itinerarioSalida  -> para convertir horas a UTC.
+   * Evidencia de programación funcional:
+   *   - Uso de foldLeft con reconocimiento de patrones sobre la tupla (acc, a).
+   * Se usa en:
+   *   - (2.1.2) itinerariosTiempo  → para obtener GMT.
+   *   - (2.1.4) itinerariosAire    → para obtener coordenadas X,Y.
+   *   - (2.1.5) itinerarioSalida   → para convertir horas a UTC.
    */
   def mapaAeropuertos(aeropuertos: List[Aeropuerto]): Map[String, Aeropuerto] =
-    aeropuertos.map(a => a.Cod -> a).toMap
+    aeropuertos.foldLeft(Map[String, Aeropuerto]()) {
+      // patrón (acc, a): acc = mapa acumulado, a = aeropuerto actual
+      case (acc, a) => acc + (a.Cod -> a)
+    }
 
   /**
    * Agrupa los vuelos por aeropuerto de origen.
    *
-   * Resultado: Map(org -> List(vuelos que salen de org)).
-   * Nos sirve para, dado un aeropuerto, obtener rápidamente
-   * todos los vuelos que salen de él.
-   * Se usa en (2.1.2) itinerariosTiempo -> busqueda todos los itinerarios
-   * Se usa en (2.1.2-2.1.5) reutilizan itenerarios
+   * Evidencia de programación funcional:
+   *   - Uso de colecciones inmutables y función de orden superior groupBy.
+   *
+   * Resultado:
+   *   Map(org -> List(vuelos que salen de org)).
+   *
+   * Se usa en:
+   *   - (2.1.1) itinerarios  → para obtener rápidamente vuelos saliendo de un origen.
    */
   private def vuelosPorOrigen(vuelos: List[Vuelo]): Map[String, List[Vuelo]] =
     vuelos.groupBy(_.Org)
 
   /**
    * Convierte una hora local (h:m) a minutos UTC, usando el GMT del aeropuerto.
-   * Se usa en (2.1.2) tiempoTotal/ itinerariosTiempo
-   * Se usa en (2.1.5) itinerarioSalida (cálculo con hora de cita).
    *
-   * Ejemplos:
-   *   gmt = -500 → offsetHoras = -5
-   *   gmt =  300 → offsetHoras =  3
+   * Relación:
+   *   horaLocal = horaUTC + offset  ⇒  horaUTC = horaLocal - offset
    *
-   * La relación es:
-   *   horaLocal = horaUTC + offset
-   *   ⇒ horaUTC = horaLocal - offset
+   * Se usa en:
+   *   - (2.1.2) tiempoTotal / itinerariosTiempo.
+   *   - (2.1.5) itinerarioSalida (cálculo con hora de cita y salidas).
    */
   def utcMinutes(h: Int, m: Int, gmt: Int): Int = {
     val offsetHours = gmt / 100             // -500 → -5, 300 → 3
-    h * 60 + m - offsetHours * 60           // pasamos todo a minutos
+    h * 60 + m - offsetHours * 60           // pasamos a minutos
   }
+
   /** Minutos que tiene un día completo (24 horas). */
   val DayMinutes: Int = 24 * 60
-
 
   /**
    * Ajusta un tiempo t para que sea mayor o igual que "after",
    * sumando días completos (de 24h) si es necesario.
-   * Se usa en (2.1.2) tiempoTotal/ itinerariosTiempo
-   * Se usa en (2.1.5) itinerarioSalida (para cadenas de vuelos).
-   * Esto se usa para:
-   *   - Asegurar que la hora de llegada no sea anterior a la de salida.
-   *   - Manejar vuelos que cruzan medianoche o duran más de un día.
+   *
+   * Se usa en:
+   *   - (2.1.2) tiempoTotal / itinerariosTiempo.
+   *   - (2.1.5) itinerarioSalida (para cadenas de vuelos).
+   *
+   * Casos típicos:
+   *   - Vuelos que cruzan medianoche.
+   *   - Vuelos que duran más de un día.
    */
   def adjust(after: Int, t: Int): Int =
     if (t >= after) t
@@ -81,47 +94,51 @@ package object Itinerarios {
       t + days * DayMinutes
     }
 
-
   /**
    * Devuelve los primeros n elementos de una lista (o la lista completa
    * si tiene menos de n elementos).
    *
+   * Evidencia de programación funcional:
+   *   - Uso de pattern matching sobre (n, xs).
+   *   - Recursión estructural sobre listas (case h :: t).
+   *
    * Se usa en:
-   *   - (2.1.2) itinerariosTiempo
-   *   - (2.1.3) itinerariosEscalas
-   *   - (2.1.4) itinerariosAire
-   *     para limitar la respuesta a lo pedido en el enunciado (máximo 3 itinerarios).
+   *   - (2.1.2) itinerariosTiempo.
+   *   - (2.1.3) itinerariosEscalas.
+   *   - (2.1.4) itinerariosAire.
    */
   def primerosN[A](n: Int, xs: List[A]): List[A] = (n, xs) match {
-    case (_, Nil) => Nil // lista vacía -> nada que devolver
-    case (0, _) => Nil // ya tomamos n elementos
-    case (k, h :: t) => h :: primerosN(k - 1, t)
+    case (_, Nil)   => Nil                    // lista vacía → nada que devolver
+    case (0, _)     => Nil                    // ya tomamos n elementos
+    case (k, h :: t) => h :: primerosN(k - 1, t)  // patrón cabeza/cola
   }
 
+  /*
+   * Número total de escalas de un itinerario.
+   *
+   * Evidencia de programación funcional:
+   *   - Reconocimiento de patrones: case Nil / case _.
+   *   - Uso de map + sum sobre una lista de vuelos.
+   *
+   * Se usa en:
+   *   - (2.1.3) itinerariosEscalas.
+   *   - (2.1.4) itinerariosAire (como criterio de desempate).
+   *
+   * Fórmula:
+   *   escalasTotales = (número de cambios de avión) + sum(Esc de cada vuelo)
+   *                  = (it.length - 1) + it.map(_.Esc).sum  (si no es vacío).
+   */
+  def escalasTotales(it: Itinerario): Int = it match {
+    case Nil => 0
+    case _   => (it.length - 1) + it.map(_.Esc).sum
+  }
 
   /**
-   *Número total de escalas de un itinerario.
-   * Se usa en (2.1.3) Número total de escalas de un itinerario.
-   * Según el enunciado, hay dos tipos de escalas:
-   *   - Cambio explícito de vuelo (de un Vuelo al siguiente en la lista).
-   *   - Escalas técnicas dentro de un vuelo (campo Esc de Vuelo).
+   * Distancia geométrica entre dos aeropuertos (en el plano X,Y).
    *
-   * Por eso:
-   * escalasTotales = (número de cambios de avión) + sum(Esc de cada vuelo)
-   * = (it.length - 1) + it.map(_.Esc).sum, si no es vacío.
+   * Se usa en:
+   *   - (2.1.4) tiempoAireTotal / itinerariosAire.
    */
-  
-   def escalasTotales(it: Itinerario): Int = it match {
-     case Nil => 0
-     case _=> (it.length - 1) + it.map(_.Esc).sum
-   }
-
-
-
-
-
-  // Se usa en (2.1.4) Distancia geométrica entre dos aeropuertos.
-  // Usada por tiempoAireTotal para calcular el "tiempo en el aire".
   def distancia(a1: Aeropuerto, a2: Aeropuerto): Double = {
     val dx = a1.X - a2.X
     val dy = a1.Y - a2.Y
@@ -129,72 +146,69 @@ package object Itinerarios {
   }
 
   /**
-   * Se usa en (2.1.4) Tiempo total "en el aire" para un itinerario.
+   * Tiempo total "en el aire" para un itinerario.
+   *
+   * Evidencia de programación funcional:
+   *   - Uso de foldLeft con reconocimiento de patrones (acum, vuelo).
+   *   - Uso de función auxiliar distancia.
    *
    * Modela el tiempo de vuelo como la suma de distancias entre:
-   * origen(vuelo) → destino(vuelo) para cada vuelo.
+   *   origen(vuelo) → destino(vuelo) para cada vuelo.
    *
    * Lo usan:
-   *   - itinerariosAire    (2.1.4, secuencial).
-   *   - itinerariosAirePar (2.1.4, paralelo).
+   *   - (2.1.4) itinerariosAire (secuencial).
+   *   - itinerariosAirePar 
    */
   def tiempoAireTotal(it: Itinerario, aeroMap: Map[String, Aeropuerto]): Double =
-    it.foldLeft(0.0) { (acum, v) =>
-      val org = aeroMap(v.Org)
-      val dst = aeroMap(v.Dst)
-      acum + distancia(org, dst)
+    it.foldLeft(0.0) {
+      case (acum, vuelo) =>
+        val origen  = aeroMap(vuelo.Org)
+        val destino = aeroMap(vuelo.Dst)
+        acum + distancia(origen, destino)
     }
-
 
   /**
    * Calcula el tiempo total de viaje de un itinerario en minutos.
-   * Se usa en (2.1.2) tiempo total de viaje de un itinerario en minutos
+   *
+   * Evidencia de programación funcional:
+   *   - Reconocimiento de patrones en listas: case Nil / case first :: rest.
+   *   - Uso de foldLeft con pattern matching sobre tuplas.
+   *   - Uso de helpers utcMinutes y adjust.
    *
    * El tiempo total incluye:
    *   - Tiempo de vuelo.
    *   - Tiempos de espera entre conexiones.
    *   - Diferencias de huso horario (GMT) entre aeropuertos.
-   *
-   * Recibe:
-   *   it     → lista de vuelos (Itinerario).
-   *   gmtMap → mapa códigoAeropuerto -> GMT.
-   *
-   * Estrategia:
-   *   - Caso base: itinerario vacío → 0.
-   *   - Para el primer vuelo: calculamos salida y llegada en UTC.
-   *   - Para el resto, usamos foldLeft acumulando:
-   *       (últimaSalidaAjustada, últimaLlegadaAjustada)
-   *     y garantizando que cada vuelo sale después de la llegada anterior.
-   *   - Resultado final: últimaLlegada - primeraSalida.
    */
   def tiempoTotal(it: Itinerario, gmtMap: Map[String, Int]): Int = it match {
     case Nil => 0
-    case first :: rest =>
-      // Conversión de la primera salida y llegada a UTC
-      val dep0     = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
-      val arr0Raw  = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
-      val arr0Adj  = adjust(dep0, arr0Raw) // llegada nunca antes de la salida
 
-      // Recorremos el resto de vuelos actualizando salida/llegada
-      val (_, lastArr) = rest.foldLeft((dep0, arr0Adj)) {
-        case ((_, prevArr), vuelo) =>
-          // Hora de salida en UTC
-          val depRaw = utcMinutes(vuelo.HS, vuelo.MS, gmtMap(vuelo.Org))
-          // Ajustamos para que sea >= llegada anterior
-          val depAdj = adjust(prevArr, depRaw)
-          // Hora de llegada en UTC y ajustada
-          val arrRaw = utcMinutes(vuelo.HL, vuelo.ML, gmtMap(vuelo.Dst))
-          val arrAdj = adjust(depAdj, arrRaw)
-          (depAdj, arrAdj)
-      }
+    case first :: rest =>
+      // Salida del primer vuelo en UTC
+      val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
+      // Llegada del primer vuelo en UTC, ajustada para no quedar antes de la salida
+      val arr0Adj = adjust(dep0,
+        utcMinutes(first.HL, first.ML, gmtMap(first.Dst)))
+
+      // Recorremos el resto de vuelos actualizando salida y llegada
+      val (_, lastArr) =
+        rest.foldLeft((dep0, arr0Adj)) {
+          // patrón ((_, prevArr), v): ignoramos la última salida y usamos solo la última llegada
+          case ((_, prevArr), v) =>
+            val depAdj = adjust(prevArr,
+              utcMinutes(v.HS, v.MS, gmtMap(v.Org)))
+            val arrAdj = adjust(depAdj,
+              utcMinutes(v.HL, v.ML, gmtMap(v.Dst)))
+            (depAdj, arrAdj)
+        }
 
       // Tiempo total = última llegada - primera salida
       lastArr - dep0
   }
 
-  // =========================
-  // F1: itinerarios
-  // =========================
+  // ======================================================
+  // F1 — itinerarios (2.1.1)
+  // ======================================================
 
   /**
    * F1 – Encontrando itinerarios.
@@ -203,9 +217,11 @@ package object Itinerarios {
    * devuelve TODOS los itinerarios posibles (listas de vuelos) que van de
    * cod1 a cod2, sin repetir aeropuertos.
    *
-   * Uso típico:
-   *   val its = itinerarios(vuelosCurso, aeropuertosCurso)
-   *   val rutas = its("CLO", "SVO")
+   * Evidencia de programación funcional:
+   *   - Recursión (función interna buscar → DFS).
+   *   - Uso de conjunto inmutable visitados para evitar ciclos.
+   *   - Expresión for (equivalente a filter + flatMap + map).
+   *   - Reconocimiento de patrones a nivel de entrada/salida (case).
    */
   def itinerarios(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
@@ -220,48 +236,42 @@ package object Itinerarios {
      * Parámetros:
      *   origen    → aeropuerto actual.
      *   destino   → aeropuerto destino final.
-     *   visitados → conjunto de aeropuertos que ya hemos visitado
-     *               en el camino actual (para evitar ciclos).
+     *   visitados → conjunto de aeropuertos ya visitados (sin ciclos).
      *
-     * Resultado:
-     *   Lista de itinerarios (List[Itinerario]), donde cada itinerario
-     *   es una lista de vuelos desde "origen" hasta "destino".
+     * Uso de programación funcional:
+     *   - Recursión pura.
+     *   - Conjuntos inmutables.
+     *   - Expresión for para combinar vuelos y subrutas.
      */
     def buscar(origen: String, destino: String, visitados: Set[String]): List[Itinerario] =
-      if (origen == destino) {
-        // Caso base: ya llegamos al destino.
-        // Representamos “camino vacío” con Nil.
+      if (origen == destino)
+        // Caso base: ya llegamos al destino → un único itinerario vacío.
         List(Nil)
-      } else {
-        // Vuelos que salen del aeropuerto actual
-        val salientes = porOrigen.getOrElse(origen, Nil)
-
-        salientes
-          // No volvemos a un aeropuerto ya visitado (evitamos ciclos)
-          .filter(v => !visitados(v.Dst))
-          // Para cada vuelo, extendemos los itinerarios desde su destino
-          .flatMap { vuelo =>
-            buscar(vuelo.Dst, destino, visitados + vuelo.Dst)
-              // Anteponemos el vuelo actual al itinerario recursivo
-              .map(it => vuelo :: it)
-          }
-      }
+      else
+        // Caso recursivo: exploramos todos los vuelos salientes del origen
+        for {
+          vuelo <- porOrigen.getOrElse(origen, Nil)   // iterador sobre vuelos salientes
+          if !visitados(vuelo.Dst)                    // evitamos regresar a aeropuertos ya visitados
+          ruta  <- buscar(vuelo.Dst, destino, visitados + vuelo.Dst)
+        } yield vuelo :: ruta                         // construimos el itinerario agregando el vuelo actual
 
     /**
      * Función que el usuario realmente invoca:
      *   (cod1, cod2) => lista de itinerarios.
      *
-     * Caso especial: si cod1 == cod2, por convenio devolvemos List(Nil),
-     * interpretado como “itinerario vacío” (ya estamos en el destino).
+     * Caso especial:
+     *   - Si cod1 == cod2, retornamos List(Nil) (ya estamos en el destino).
      */
     (c1: String, c2: String) =>
-      if (c1 == c2) List(Nil)
-      else buscar(c1, c2, Set(c1))  // empezamos habiendo visitado el origen
+      c1 match {
+        case x if x == c2 => List(Nil)
+        case _            => buscar(c1, c2, Set(c1))  // comenzamos con el origen marcado como visitado
+      }
   }
 
-  // =========================
-  // F2: itinerariosTiempo
-  // =========================
+  // ======================================================
+  // F2 — itinerariosTiempo (2.1.2)
+  // ======================================================
 
   /**
    * F2 – Minimización de tiempo total de viaje.
@@ -270,51 +280,50 @@ package object Itinerarios {
    * devuelve HASTA tres itinerarios que correspondan a los menores tiempos
    * totales de viaje (contando vuelo + esperas + zonas horarias).
    *
-   * Si hay menos de 3 itinerarios posibles, devuelve todos los que existan.
+   * Evidencia de programación funcional:
+   *   - Reutilización de F1 (composición de funciones).
+   *   - Uso de map sobre mapas (pattern matching (c,a)).
+   *   - Uso de sortBy como función de orden superior.
+   *   - Uso de primerosN como recursión con patrones.
    */
   def itinerariosTiempo(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
 
     // Mapa códigoAeropuerto -> GMT, para usar en tiempoTotal
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (c, a) => c -> a.GMT }
 
     // Reutilizamos la función F1 para generar todos los itinerarios posibles.
     val todosItinerarios = itinerarios(vuelos, aeropuertos)
 
-    /**
-     * Función que el usuario invoca:
-     *   (cod1, cod2) => lista de los mejores itinerarios en tiempo.
-     *
-     * Estrategia:
-     *   1. Obtenemos todos los itinerarios cod1 → cod2.
-     *   2. Calculamos su tiempo total usando tiempoTotal.
-     *   3. Ordenamos de menor a mayor tiempo.
-     *   4. Tomamos como máximo los primeros 3.
-     */
     (c1: String, c2: String) => {
-      val its = todosItinerarios(c1, c2)               // todos los itinerarios posibles
+      val its = todosItinerarios(c1, c2)
+      // Ordenamos por tiempo total de viaje usando la función de alto orden sortBy
       val ordenados = its.sortBy(it => tiempoTotal(it, gmtMap))
+      // Limitamos a 3 resultados usando un helper recursivo
       primerosN(3, ordenados)
     }
   }
 
-  // =========================
-  // F3: itinerariosEscalas (2.1.3)
-  // =========================
-
-  // =========================
-  // F3: itinerariosEscalas (2.1.3)
-  // =========================
+  // ======================================================
+  // F3 — itinerariosEscalas (2.1.3)
+  // ======================================================
 
   /**
-   * F3 - Minimización del número de escalas.
+   * F3 – Minimización del número de escalas.
    *
    * Devuelve hasta 3 itinerarios entre cod1 y cod2 con menor cantidad
    * de escalas totales (cambios de avión + escalas técnicas).
-   * En caso de empate:
-   *   - se prefieren menos vuelos en el itinerario,
-   *   - y luego menor tiempo total de viaje.
+   *
+   * Criterios de orden:
+   *   1) Menor número de escalasTotales.
+   *   2) Menor número de vuelos (it.length).
+   *   3) Menor tiempoTotal de viaje.
+   *
+   * Evidencia de programación funcional:
+   *   - sortBy recibiendo una tupla (escalas, longitud, tiempo).
+   *   - Uso de helpers escalasTotales y tiempoTotal.
+   *   - Reutilización de itinerarios (F1).
    */
   def itinerariosEscalas(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
@@ -328,35 +337,40 @@ package object Itinerarios {
     (c1: String, c2: String) => {
       val its = todosItinerarios(c1, c2)
 
-      // Ordenamos por:
-      // 1) menos escalasTotales
-      // 2) menos vuelos (it.length)
-      // 3) menor tiempoTotal
-      val ordenados = its.sortBy { it =>
-        (
-          escalasTotales(it),
-          it.length,
-          tiempoTotal(it, gmtMap)
-        )
-      }
+      val ordenados =
+        its.sortBy { it =>
+          // Aquí usamos una tupla como clave de ordenamiento:
+          // (escalaTotales, longitud, tiempoTotal)
+          (
+            escalasTotales(it),
+            it.length,
+            tiempoTotal(it, gmtMap)
+          )
+        }
 
       primerosN(3, ordenados)
     }
   }
 
-
-  // =========================
-  // F4: itinerariosAire (2.1.4)
-  // =========================
+  // ======================================================
+  // F4 — itinerariosAire (2.1.4)
+  // ======================================================
 
   /**
-   * F4 - Minimización del tiempo en el aire.
+   * F4 – Minimización del tiempo en el aire.
    *
    * Devuelve hasta 3 itinerarios entre cod1 y cod2 que minimizan
    * la suma de distancias entre aeropuertos (tiempo en aire).
-   * En caso de empate:
-   *   - se prefieren menos escalas,
-   *   - y luego menor tiempo total de viaje.
+   *
+   * Criterios de orden:
+   *   1) Menor tiempoAireTotal (suma de distancias).
+   *   2) Menor número de escalasTotales.
+   *   3) Menor tiempoTotal de viaje.
+   *
+   * Evidencia de programación funcional:
+   *   - sortBy sobre tuplas.
+   *   - uso de helpers tiempoAireTotal, escalasTotales, tiempoTotal.
+   *   - Composición de funciones, reutilizando itinerarios (F1).
    */
   def itinerariosAire(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String) => List[Itinerario] = {
@@ -370,25 +384,22 @@ package object Itinerarios {
     (c1: String, c2: String) => {
       val its = todosItinerarios(c1, c2)
 
-      // Ordenamos por:
-      // 1) tiempo en aire (distancia total)
-      // 2) número de escalas
-      // 3) tiempo total de viaje
-      val ordenados = its.sortBy { it =>
-        (
-          tiempoAireTotal(it, aeroMap), // criterio principal
-          escalasTotales(it), // desempate 1: menos escalas
-          tiempoTotal(it, gmtMap) // desempate 2: menor tiempo total
-        )
-      }
+      val ordenados =
+        its.sortBy { it =>
+          (
+            tiempoAireTotal(it, aeroMap),      // criterio principal
+            escalasTotales(it),               // menos escalas
+            tiempoTotal(it, gmtMap)           // menor tiempo total
+          )
+        }
+
       primerosN(3, ordenados)
     }
   }
 
-
-  // =========================
-  // F5: itinerarioSalida (2.1.5)
-  // =========================
+  // ======================================================
+  // F5 — itinerarioSalida (2.1.5)
+  // ======================================================
 
   /**
    * F5 – Optimización de la hora de salida.
@@ -399,11 +410,14 @@ package object Itinerarios {
    *   - hCita, mCita: hora local de la cita en el aeropuerto de destino,
    *
    * selecciona un itinerario que:
-   *   1. Llega a cod2 **a tiempo o antes** de la cita.
-   *      2. Entre todos los que llegan a tiempo, tiene la hora de salida
-   *      en cod1 lo más tarde posible.
+   *   1. Llega a cod2 en algún momento antes de la cita (se puede llegar días antes,
+   *      siguiendo la interpretación del foro del profesor).
+   *   2. Entre todos los que "sirven", tiene la hora de salida en cod1 lo más tarde posible.
    *
-   * Si ningún itinerario llega a tiempo, devuelve el itinerario vacío (Nil).
+   * Evidencia de programación funcional:
+   *   - Función interna con pattern matching (analizar).
+   *   - Uso de Option y collect para filtrar/transformar de forma declarativa.
+   *   - Uso de maxBy como función de orden superior para seleccionar el mejor candidato.
    */
   def itinerarioSalida(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
   : (String, String, Int, Int) => Itinerario = {
@@ -422,40 +436,52 @@ package object Itinerarios {
 
       val its = todosItinerarios(c1, c2)
 
-      // Para cada itinerario calculamos salida y llegada en UTC
-      // (misma lógica de tiempoTotal), pero **NO** filtramos por la hora de la cita,
-      // siguiendo la interpretación del profesor: se puede llegar el día anterior.
-      val candidatos: List[(Itinerario, Int)] =
-        its.flatMap {
-          case Nil =>
-            // Itinerario vacío: solo tiene sentido cuando c1 == c2.
-            if (c1 == c2) List((Nil, citaUTC)) else Nil
+      /**
+       * Función auxiliar que analiza un itinerario y, si es válido,
+       * devuelve Some((itinerario, depUTC)) donde depUTC es la hora
+       * de salida (en UTC) del primer vuelo.
+       *
+       * Uso de pattern matching en listas:
+       *   - case Nil
+       *   - case first :: rest
+       */
+      def analizar(it: Itinerario): Option[(Itinerario, Int)] = it match {
+        case Nil =>
+          // Itinerario vacío solo tiene sentido si origen y destino coinciden.
+          if (c1 == c2) Some(Nil -> citaUTC) else None
 
-          case first :: rest =>
-            val dep0 = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
-            val arr0Raw = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
-            val arr0Adj = adjust(dep0, arr0Raw)
+        case first :: rest =>
+          val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
+          val arr0Adj = adjust(dep0,
+            utcMinutes(first.HL, first.ML, gmtMap(first.Dst)))
 
-            val (_, lastArr) = rest.foldLeft((dep0, arr0Adj)) {
-              case ((_, prevArr), vuelo) =>
-                val depRaw = utcMinutes(vuelo.HS, vuelo.MS, gmtMap(vuelo.Org))
-                val depAdj = adjust(prevArr, depRaw)
-                val arrRaw = utcMinutes(vuelo.HL, vuelo.ML, gmtMap(vuelo.Dst))
-                val arrAdj = adjust(depAdj, arrRaw)
+          // Reutilizamos la idea de tiempoTotal, pero aquí nos interesa
+          // la hora de salida dep0 (para escoger la más tarde)
+          val (_, lastArr) =
+            rest.foldLeft((dep0, arr0Adj)) {
+              case ((_, prevArr), v) =>
+                val depAdj = adjust(prevArr,
+                  utcMinutes(v.HS, v.MS, gmtMap(v.Org)))
+                val arrAdj = adjust(depAdj,
+                  utcMinutes(v.HL, v.ML, gmtMap(v.Dst)))
                 (depAdj, arrAdj)
             }
 
-            // Siguiendo el foro: cualquier itinerario que llega a cod2
-            // se puede interpretar como que llega algún día antes de la cita.
-            // Por tanto, TODOS son candidatos; la cita solo se usa para
-            // decidir cuál salida queremos (la más tarde posible).
-            List((first :: rest, dep0))
-        }
+          // Siguiendo el foro: cualquier itinerario que llega a cod2 se considera
+          // aceptable (puede llegar días antes de la cita).
+          Some(it -> dep0)
+      }
 
+      // Usamos collect para:
+      //   - aplicar analizar a cada itinerario,
+      //   - quedarnos solo con los que devuelven Some,
+      //   - extraer directamente el par (itinerario, depUTC).
+      val candidatos: List[(Itinerario, Int)] =
+        its.collect { case it if analizar(it).isDefined => analizar(it).get }
 
       if (candidatos.isEmpty) Nil
       else {
-        // Elegimos el itinerario que **más tarde** sale (mayor depUTC)
+        // Elegimos el itinerario cuya salida depUTC es la más tarde posible.
         val (mejorItinerario, _) =
           candidatos.maxBy { case (_, depUTC) => depUTC }
         mejorItinerario
@@ -463,5 +489,3 @@ package object Itinerarios {
     }
   }
 }
-
-
