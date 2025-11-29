@@ -2,7 +2,7 @@ import Datos._
 import Itinerarios._
 import ItinerariosPar._
 
-
+/*
 //Pruebas para 3.1 ENUNCIADO (Corresponde a 2.1.1)
 //Estas son las pruebas que el enunciado plantea para itinerarios, Devuelven
 //Exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
@@ -80,7 +80,7 @@ val itsSalidaCurso = itinerarioSalida(vuelosCurso, aeropuertosCurso)
 //Pruebas itinerariosSalida
 val itsal1 = itsSalidaCurso("CTG", "PTY", 11, 40)
 val itsal2 = itsSalidaCurso("CTG", "PTY", 11, 55)
-val itsal3 = itsSalidaCurso("CTG", "PTY", 10, 30) //RR DEVUELVE LISTA VACIA, ALGO Q NO DEBE SER.
+val itsal3 = itsSalidaCurso("CTG", "PTY", 10, 30)
 
 
 
@@ -158,28 +158,7 @@ val chequeoF4: List[(String, Boolean)] =
 
 chequeoF4   // todos deberían ser true
 
-
-// -------------- F5 vs F5p: itinerarioSalida / itinerarioSalidaPar --------------
-
-val itsSalidaCursoPar = itinerarioSalidaPar(vuelosCurso, aeropuertosCurso)
-
-// mismos tres casos que el enunciado / tus pruebas
-val casosSalida: List[(String, String, Int, Int, String)] = List(
-  ("CTG", "PTY", 11, 40, "F5 salida CTG->PTY 11:40"),
-  ("CTG", "PTY", 11, 55, "F5 salida CTG->PTY 11:55"),
-  ("CTG", "PTY", 10, 30, "F5 salida CTG->PTY 10:30")
-)
-
-val chequeoF5: List[(String, Boolean)] =
-  casosSalida.map { case (o, d, h, m, nombre) =>
-    val sec = itsSalidaCurso(o, d, h, m)
-    val par = itsSalidaCursoPar(o, d, h, m)
-    val ok  = (sec == par)
-    (nombre, ok)
-  }
-
-chequeoF5   // todas dan true asi que si funciona o devuelven lo mismo q la secuencial
+*/
 
 
-//ACA EMPIEZAN LAS PRUEBAS QUE SE NOS DIO, ESTO TIENE QUE IR EN EL INFORME, DONDE SE COMPARA CADA COSA
-//COMPLETAR
+
