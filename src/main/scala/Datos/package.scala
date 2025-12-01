@@ -51,7 +51,7 @@ package object Datos {
   // por SMR, Cali Moscu por Estambul tiene 4 escalas pero 2 vuelos, Cali Moscu por Madrid tiene 3 vuelos y 3 escalas
   // pero llega más temprano
 
-
+/*
   // Datos de aeropuertos en USA
   val aeropuertos=List(
     Aeropuerto("ABQ", 195, 275, -800),
@@ -2978,7 +2978,7 @@ package object Datos {
      Vuelo("ZK", 38, "MSP", 16, 20, "ORD", 19, 5, 2),
      Vuelo("ZK", 76, "DEN", 8, 45, "ORD", 15, 15, 5)
    )
-
+*/
   //________________________________________________________
   /*
   //longitud 15

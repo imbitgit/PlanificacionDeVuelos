@@ -2,6 +2,8 @@ import Datos._
 import Itinerarios._
 import ItinerariosPar._
 
+vuelosCurso.take(2)  // Prueba para comprobar que sí hay funcionamiento.
+
 /*
 //Pruebas para 3.1 ENUNCIADO (Corresponde a 2.1.1)
 //Estas son las pruebas que el enunciado plantea para itinerarios, Devuelven
