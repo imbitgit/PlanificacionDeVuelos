@@ -4,7 +4,7 @@ import ItinerariosPar._
 
 vuelosCurso.take(2)  // Prueba para comprobar que sí hay funcionamiento.
 
-/*
+
 //Pruebas para 3.1 ENUNCIADO (Corresponde a 2.1.1)
 //Estas son las pruebas que el enunciado plantea para itinerarios, Devuelven
 //Exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
@@ -160,7 +160,20 @@ val chequeoF4: List[(String, Boolean)] =
 
 chequeoF4   // todos deberían ser true
 
-*/
+
+// -------------- F5 vs F5p: itinerarioSalida / itinerarioSalidaPar --------------
+
+val itsSalidaCursoPar = itinerarioSalidaPar(vuelosCurso, aeropuertosCurso)
+
+val chequeoF5: List[(String, Boolean)] =
+  casosOD.map { case (o, d) =>
+    val sec = itsSalidaCurso(o, d, 11, 40)
+    val par = itsSalidaCursoPar(o, d, 11, 40)
+    val ok  = (sec == par)
+    (s"F5 itinerarioSalida $o -> $d", ok)
+  }
+
+chequeoF5  // efectivamente, todos dan true.
 
 
 
