@@ -157,7 +157,7 @@ package object ItinerariosPar {
 
     // Mapa códigoAeropuerto -> GMT, para usar en tiempoTotal
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     // Reutilizamos la versión paralela de F1
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
@@ -204,7 +204,7 @@ package object ItinerariosPar {
 
     // Mapa GMT para poder usar tiempoTotal como desempate
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     (c1: String, c2: String) => {
       val its = todosItinerariosPar(c1, c2)
@@ -251,7 +251,7 @@ package object ItinerariosPar {
 
     val aeroMap = mapaAeropuertos(aeropuertos)
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
 
@@ -306,7 +306,7 @@ package object ItinerariosPar {
 
     // Mapa código -> GMT para convertir horas locales a UTC
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     // Generamos los itinerarios usando la versión paralela de F1
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
