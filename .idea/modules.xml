@@ -3,7 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/proyectoFinal.iml" filepath="$PROJECT_DIR$/.idea/modules/proyectoFinal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ProyectoRepo/proyectoFinal.main.iml" filepath="$PROJECT_DIR$/.idea/modules/ProyectoRepo/proyectoFinal.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/proyectoFinal.proyectoFinal-build.iml" filepath="$PROJECT_DIR$/.idea/modules/proyectoFinal.proyectoFinal-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ProyectoRepo/proyectoFinal.test.iml" filepath="$PROJECT_DIR$/.idea/modules/ProyectoRepo/proyectoFinal.test.iml" />
     </modules>
   </component>
 </project>

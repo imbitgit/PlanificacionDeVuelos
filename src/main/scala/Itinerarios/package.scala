@@ -100,7 +100,7 @@ package object Itinerarios {
    *
    * Evidencia de programación funcional:
    *   - Uso de pattern matching sobre (n, xs).
-   *   - Recursión estructural sobre listas (case h :: t).
+   *   - Recursión estructural sobre listas (case list).
    *
    * Se usa en:
    *   - (2.1.2) itinerariosTiempo.
@@ -110,7 +110,7 @@ package object Itinerarios {
   def primerosN[A](n: Int, xs: List[A]): List[A] = (n, xs) match {
     case (_, Nil)   => Nil                    // lista vacía → nada que devolver
     case (0, _)     => Nil                    // ya tomamos n elementos
-    case (k, h :: t) => h :: primerosN(k - 1, t)  // patrón cabeza/cola
+    case (k, list) => list.head :: primerosN(k - 1, list.tail)  // patrón cabeza/cola
   }
 
   /*
@@ -171,7 +171,7 @@ package object Itinerarios {
    * Calcula el tiempo total de viaje de un itinerario en minutos.
    *
    * Evidencia de programación funcional:
-   *   - Reconocimiento de patrones en listas: case Nil / case first :: rest.
+   *   - Reconocimiento de patrones en listas: case Nil / case list.
    *   - Uso de foldLeft con pattern matching sobre tuplas.
    *   - Uso de helpers utcMinutes y adjust.
    *
@@ -183,16 +183,16 @@ package object Itinerarios {
   def tiempoTotal(it: Itinerario, gmtMap: Map[String, Int]): Int = it match {
     case Nil => 0
 
-    case first :: rest =>
+    case list =>
       // Salida del primer vuelo en UTC
-      val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
+      val dep0    = utcMinutes(list.head.HS, list.head.MS, gmtMap(list.head.Org))
       // Llegada del primer vuelo en UTC, ajustada para no quedar antes de la salida
       val arr0Adj = adjust(dep0,
-        utcMinutes(first.HL, first.ML, gmtMap(first.Dst)))
+        utcMinutes(list.head.HL, list.head.ML, gmtMap(list.head.Dst)))
 
       // Recorremos el resto de vuelos actualizando salida y llegada
       val (_, lastArr) =
-        rest.foldLeft((dep0, arr0Adj)) {
+        list.tail.foldLeft((dep0, arr0Adj)) {
           // patrón ((_, prevArr), v): ignoramos la última salida y usamos solo la última llegada
           case ((_, prevArr), v) =>
             val depAdj = adjust(prevArr,
@@ -247,13 +247,19 @@ package object Itinerarios {
       if (origen == destino)
         // Caso base: ya llegamos al destino → un único itinerario vacío.
         List(Nil)
-      else
+      else {
         // Caso recursivo: exploramos todos los vuelos salientes del origen
+        val vuelosSalientes = porOrigen.filter {case (k, _) => k == origen}.values.toList match { // Para filtrar mejor.
+          case Nil => Nil
+          case vs :: _ => vs
+        }
+
         for {
-          vuelo <- porOrigen.getOrElse(origen, Nil)   // iterador sobre vuelos salientes
+          vuelo <- vuelosSalientes   // se actúa sobre lo filtrado anteriormente.
           if !visitados(vuelo.Dst)                    // evitamos regresar a aeropuertos ya visitados
           ruta  <- buscar(vuelo.Dst, destino, visitados + vuelo.Dst)
-        } yield vuelo :: ruta                         // construimos el itinerario agregando el vuelo actual
+        } yield vuelo :: ruta
+      } // construimos el itinerario agregando el vuelo actual
 
     /**
      * Función que el usuario realmente invoca:
@@ -416,7 +422,7 @@ package object Itinerarios {
    *
    * Evidencia de programación funcional:
    *   - Función interna con pattern matching (analizar).
-   *   - Uso de Option y collect para filtrar/transformar de forma declarativa.
+   *   - Uso de listas inmutables para filtrar/transformar de forma declarativa.
    *   - Uso de maxBy como función de orden superior para seleccionar el mejor candidato.
    */
   def itinerarioSalida(vuelos: List[Vuelo], aeropuertos: List[Aeropuerto])
@@ -438,27 +444,27 @@ package object Itinerarios {
 
       /**
        * Función auxiliar que analiza un itinerario y, si es válido,
-       * devuelve Some((itinerario, depUTC)) donde depUTC es la hora
+       * devuelve List((itinerario, depUTC)) donde depUTC es la hora
        * de salida (en UTC) del primer vuelo.
        *
        * Uso de pattern matching en listas:
        *   - case Nil
-       *   - case first :: rest
+       *   - case list
        */
-      def analizar(it: Itinerario): Option[(Itinerario, Int)] = it match {
+      def analizar(it: Itinerario): List[(Itinerario, Int)] = it match {
         case Nil =>
           // Itinerario vacío solo tiene sentido si origen y destino coinciden.
-          if (c1 == c2) Some(Nil -> citaUTC) else None
+          if (c1 == c2) List(Nil -> citaUTC) else Nil
 
-        case first :: rest =>
-          val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
+        case list =>
+          val dep0    = utcMinutes(list.head.HS, list.head.MS, gmtMap(list.head.Org))
           val arr0Adj = adjust(dep0,
-            utcMinutes(first.HL, first.ML, gmtMap(first.Dst)))
+            utcMinutes(list.head.HL, list.head.ML, gmtMap(list.head.Dst)))
 
           // Reutilizamos la idea de tiempoTotal, pero aquí nos interesa
           // la hora de salida dep0 (para escoger la más tarde)
           val (_, lastArr) =
-            rest.foldLeft((dep0, arr0Adj)) {
+            list.tail.foldLeft((dep0, arr0Adj)) {
               case ((_, prevArr), v) =>
                 val depAdj = adjust(prevArr,
                   utcMinutes(v.HS, v.MS, gmtMap(v.Org)))
@@ -469,15 +475,14 @@ package object Itinerarios {
 
           // Siguiendo el foro: cualquier itinerario que llega a cod2 se considera
           // aceptable (puede llegar días antes de la cita).
-          Some(it -> dep0)
+          List(it -> dep0)
       }
 
-      // Usamos collect para:
-      //   - aplicar analizar a cada itinerario,
-      //   - quedarnos solo con los que devuelven Some,
+      // Usamos flatMap para:
+      //   - aplicar 'analizar' a cada itinerario,
       //   - extraer directamente el par (itinerario, depUTC).
       val candidatos: List[(Itinerario, Int)] =
-        its.collect { case it if analizar(it).isDefined => analizar(it).get }
+        its.flatMap(analizar)
 
       if (candidatos.isEmpty) Nil
       else {

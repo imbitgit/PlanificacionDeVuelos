@@ -98,7 +98,10 @@ package object ItinerariosPar {
       } else {
         // Vuelos que salen de "origen" y no llevan a aeropuertos ya visitados
         val salientes =
-          porOrigen.getOrElse(origen, Nil).filter(v => !visitados(v.Dst))
+          porOrigen.filter {case (k, _) => k == origen}.values.toList match {
+            case Nil => Nil
+            case vs :: _ => vs.filter(v => !visitados(v.Dst))
+          }
 
         /**
          * Explora una lista de vuelos salientes.
@@ -154,7 +157,7 @@ package object ItinerariosPar {
 
     // Mapa códigoAeropuerto -> GMT, para usar en tiempoTotal
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     // Reutilizamos la versión paralela de F1
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
@@ -201,7 +204,7 @@ package object ItinerariosPar {
 
     // Mapa GMT para poder usar tiempoTotal como desempate
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     (c1: String, c2: String) => {
       val its = todosItinerariosPar(c1, c2)
@@ -248,7 +251,7 @@ package object ItinerariosPar {
 
     val aeroMap = mapaAeropuertos(aeropuertos)
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
 
@@ -303,7 +306,7 @@ package object ItinerariosPar {
 
     // Mapa código -> GMT para convertir horas locales a UTC
     val gmtMap: Map[String, Int] =
-      mapaAeropuertos(aeropuertos).view.mapValues(_.GMT).toMap
+      mapaAeropuertos(aeropuertos).map { case (cod, aero) => cod -> aero.GMT }
 
     // Generamos los itinerarios usando la versión paralela de F1
     val todosItinerariosPar = itinerariosPar(vuelos, aeropuertos)
@@ -323,12 +326,12 @@ package object ItinerariosPar {
             if (c1 == c2) (Nil, citaUTC)
             else         (Nil, Int.MinValue) // marcador “no válido”
 
-          case first :: rest =>
-            val dep0    = utcMinutes(first.HS, first.MS, gmtMap(first.Org))
-            val arr0Raw = utcMinutes(first.HL, first.ML, gmtMap(first.Dst))
+          case list =>
+            val dep0    = utcMinutes(list.head.HS, list.head.MS, gmtMap(list.head.Org))
+            val arr0Raw = utcMinutes(list.head.HL, list.head.ML, gmtMap(list.head.Dst))
             val arr0Adj = adjust(dep0, arr0Raw)
 
-            val (_, lastArr) = rest.foldLeft((dep0, arr0Adj)) {
+            val (_, lastArr) = list.tail.foldLeft((dep0, arr0Adj)) {
               case ((_, prevArr), vuelo) =>
                 val depRaw = utcMinutes(vuelo.HS, vuelo.MS, gmtMap(vuelo.Org))
                 val depAdj = adjust(prevArr, depRaw)
@@ -339,7 +342,7 @@ package object ItinerariosPar {
 
             // Todos los itinerarios que llegan a cod2 son considerados;
             // usamos dep0 (hora de salida) para escoger el “más tarde”.
-            (first :: rest, dep0)
+            (list, dep0)
         }.filter {
           // Filtramos el marcador de “no válido” cuando c1 != c2.
           case (Nil, dep) => dep != Int.MinValue
