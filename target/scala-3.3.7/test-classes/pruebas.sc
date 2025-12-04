@@ -337,6 +337,7 @@ probar(dataset500._1, dataset500._2, "ORD", "TPA")
 //  LISTA DE DATASETS (A1..A5) — USAMOS LOS QUE YA DEFINISTE EN Datos
 // =======================================================================
 
+/*
 val datasets15 = List(
   ("A1", vuelosA1),
   ("A2", vuelosA2),
@@ -344,6 +345,34 @@ val datasets15 = List(
   ("A4", vuelosA4),
   ("A5", vuelosA5)
 )
+*/
+
+
+val datasets40 = List(
+  ("B1", vuelosB1),
+  ("B2", vuelosB2),
+  ("B3", vuelosB3),
+  ("B4", vuelosB4),
+  ("B5", vuelosB5)
+)
+
+/*
+val datasets100 = List(
+  ("C1", vuelosC1),
+  ("C2", vuelosC2),
+  ("C3", vuelosC3),
+  ("C4", vuelosC4),
+  ("C5", vuelosC5)
+)
+
+val datasets500 = List(
+  ("D1", vuelosD1),
+  ("D2", vuelosD2),
+  ("D3", vuelosD3),
+  ("D4", vuelosD4),
+  ("D5", vuelosD5)
+)
+*/
 
 // Aeropuertos (los de USA que ya tienes)
 val aerop = aeropuertos
@@ -421,7 +450,7 @@ def probarOD(ori: String, dst: String, ds: List[Vuelo]): Unit = {
 //                    EJECUTAR TODAS LAS PRUEBAS A1–A5
 // =======================================================================
 
-datasets15.foreach { case (nombre, ds) =>
+datasets40.foreach { case (nombre, ds) =>
 
   println("\n=======================================================")
   println(s"==============   DATASET $nombre   =====================")
@@ -433,9 +462,9 @@ datasets15.foreach { case (nombre, ds) =>
   // pares.foreach { case (o, d) => probarOD(o, d, ds) }
 
   // Para no imprimir 400 líneas:
-  pares.take(12).foreach { case (o, d) => probarOD(o, d, ds) }
+  pares.take(3).foreach { case (o, d) => probarOD(o, d, ds) }
 
-  println(s"\n(Pruebas mostradas: 12 / ${pares.size})")
+  println(s"\n(Pruebas mostradas: 3 / ${pares.size})")
 }
 
 
