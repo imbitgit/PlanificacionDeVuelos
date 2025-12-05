@@ -1,0 +1,5 @@
+[warn] -- Warning: D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\src\main\scala\Datos\package.scala:2386:0 
+[warn] 2386 |val aeropuertos=List(
+[warn]      |^
+[warn]      |Line is indented too far to the left, or a `}` is missing
+[warn] one warning found

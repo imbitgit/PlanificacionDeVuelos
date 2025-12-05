@@ -11,8 +11,8 @@
             <option value="$PROJECT_DIR$/project" />
           </set>
         </option>
-        <option name="sbtVersion" value="1.11.7" />
       </SbtProjectSettings>
     </option>
+    <option name="vmParameters" value="-Xms1G -Xmx4G -XX:+UseG1GC" />
   </component>
 </project>
