@@ -1,0 +1,59 @@
+[debug] Packaging D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\proyectofinal_3-0.1.0-SNAPSHOT.jar ...
+[debug] Input file mappings:
+[debug] 	common
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common
+[debug] 	common\package$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common\package$.class
+[debug] 	common\package$DefaultTaskScheduler$$anon$1.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common\package$DefaultTaskScheduler$$anon$1.class
+[debug] 	common\package$DefaultTaskScheduler.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common\package$DefaultTaskScheduler.class
+[debug] 	common\package$TaskScheduler.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common\package$TaskScheduler.class
+[debug] 	common\package.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common\package.class
+[debug] 	common\package.tasty
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\common\package.tasty
+[debug] 	Correr500$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Correr500$.class
+[debug] 	Correr500.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Correr500.class
+[debug] 	Correr500.tasty
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Correr500.tasty
+[debug] 	Datos
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos
+[debug] 	Datos\package$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package$.class
+[debug] 	Datos\package$Aeropuerto$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package$Aeropuerto$.class
+[debug] 	Datos\package$Aeropuerto.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package$Aeropuerto.class
+[debug] 	Datos\package$Vuelo$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package$Vuelo$.class
+[debug] 	Datos\package$Vuelo.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package$Vuelo.class
+[debug] 	Datos\package.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package.class
+[debug] 	Datos\package.tasty
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Datos\package.tasty
+[debug] 	Itinerarios
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Itinerarios
+[debug] 	Itinerarios\package$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Itinerarios\package$.class
+[debug] 	Itinerarios\package.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Itinerarios\package.class
+[debug] 	Itinerarios\package.tasty
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\Itinerarios\package.tasty
+[debug] 	ItinerariosPar
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\ItinerariosPar
+[debug] 	ItinerariosPar\package$.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\ItinerariosPar\package$.class
+[debug] 	ItinerariosPar\package.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\ItinerariosPar\package.class
+[debug] 	ItinerariosPar\package.tasty
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\ItinerariosPar\package.tasty
+[debug] 	run.class
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\run.class
+[debug] 	run.tasty
+[debug] 	  D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes\run.tasty
+[debug] Done packaging.

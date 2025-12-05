@@ -1,0 +1,16 @@
+[debug] > Exec(console, None, None)
+[debug] Evaluating tasks: Compile / console
+[debug] Running task... Cancel: Signal, check cycles: false, forcegc: true
+[info] compiling 4 Scala sources to D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\target\scala-3.3.7\classes ...
+[warn] -- Warning: D:\Mi Informacion\Mis Documentos\Universidad\Sexto Semestre\Programacion Funcional y Concurrente\IdeaProjects\ProyectoRepo\src\main\scala\Datos\package.scala:2386:0 
+[warn] 2386 |val aeropuertos=List(
+[warn]      |^
+[warn]      |Line is indented too far to the left, or a `}` is missing
+[warn] one warning found
+[info] done compiling
+[warn] Canceling execution...
+[debug] Forcing garbage collection...
+[error] Cancelled: console
+[error] Cancelled: console
+[error] Use 'last' for the full log.
+[debug] > Exec(idea-shell, None, None)

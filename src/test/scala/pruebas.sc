@@ -2,6 +2,7 @@ import Datos._
 import Itinerarios._
 import ItinerariosPar._
 
+
 vuelosCurso.take(2)  // Prueba para comprobar que sí hay funcionamiento.
 
 
@@ -197,6 +198,41 @@ def medir[T](bloque: => T): (T, Double) = {
   (r, (t1 - t0) / 1e6)
 }
 
+def medirPromedio[T](bloque: => T, rep: Int): (T, Double, Double) = {
+  // Ejecutamos una vez para obtener el resultado (puro)
+  val resultado = bloque
+
+  // Ejecutamos N veces solo para medir tiempo
+  val tiempos: List[Double] =
+    List.fill(rep)(medir(bloque)._2)
+
+  val promedio = tiempos.sum / rep
+
+  // desviación estándar
+  val variance =
+    tiempos.map(t => math.pow(t - promedio, 2)).sum / rep
+
+  val desviacion = math.sqrt(variance)
+
+  (resultado, promedio, desviacion)
+}
+
+def compararPromedio[T](sec: => T, par: => T, rep: Int):
+(Double, Double, Double, Double, Boolean) = {
+
+  val (resS, promS, desvS) = medirPromedio(sec, rep)
+  val (resP, promP, desvP) = medirPromedio(par, rep)
+
+  val speedup = promS / promP
+  val ok = (resS == resP)
+
+  (promS, promP, speedup, (desvS + desvP) / 2, ok)
+}
+
+def mostrarItinerariosEn(ds: List[Vuelo]): Boolean =
+  ds.size <= 40      // solo imprimimos en dataset 15 y dataset 40
+
+
 /*
 // ================================================================
 //                     PRUEBAS CON EL CURSO PEQUEÑO
@@ -337,6 +373,7 @@ probar(dataset500._1, dataset500._2, "ORD", "TPA")
 //  LISTA DE DATASETS (A1..A5) — USAMOS LOS QUE YA DEFINISTE EN Datos
 // =======================================================================
 
+
 val datasets15 = List(
   ("A1", vuelosA1),
   ("A2", vuelosA2),
@@ -344,6 +381,40 @@ val datasets15 = List(
   ("A4", vuelosA4),
   ("A5", vuelosA5)
 )
+
+
+/*
+val datasets40 = List(
+  ("B1", vuelosB1),
+  ("B2", vuelosB2),
+  ("B3", vuelosB3),
+  ("B4", vuelosB4),
+  ("B5", vuelosB5)
+)
+*/
+
+/*
+val datasets100 = List(
+  ("C1", vuelosC1),
+  ("C2", vuelosC2),
+  ("C3", vuelosC3),
+  ("C4", vuelosC4),
+  ("C5", vuelosC5)
+)
+*/
+
+/*
+val datasets500 = List(
+  ("D1", vuelosD1),
+  ("D2", vuelosD2),
+  ("D3", vuelosD3)
+)
+*/
+
+//val dataset200:List[(String, List[Vuelo])] = List(("200", vuelosC1 ++ vuelosC2))
+val extra:List[Vuelo] = List(Vuelo("HP", 200, "PHX", 8, 10, "ABQ", 12, 0, 0))
+
+val dataset16:List[(String, List[Vuelo])] = List(("16", vuelosA1 ++ extra))
 
 // Aeropuertos (los de USA que ya tienes)
 val aerop = aeropuertos
@@ -375,53 +446,84 @@ def obtenerParesOD(ds: List[Vuelo]): List[(String,String)] = {
 //                (IGUAL A TU FORMATO, SIN CAMBIAR NADA)
 // =======================================================================
 
-def probarOD(ori: String, dst: String, ds: List[Vuelo]): Unit = {
+def probarOD(ori: String, dst: String, ds: List[Vuelo], rep: Int): (Double, Double, Double) = {
   println(s"\n===================================================")
   println(s" PRUEBA O-D:  $ori → $dst")
   println(s"===================================================\n")
 
+  val imprimir = mostrarItinerariosEn(ds)
+
+  def fila(nombre: String, s: Double, p: Double, sp: Double, ok: Boolean): Unit =
+    println(f"${nombre}%-10s  sec = ${s}%-8.2f ms   par = ${p}%-8.2f ms   speedup = ${sp}%-6.2f   ok?: $ok")
+
   // ---------------- F1 ----------------
-  val (r1s, t1s) = medir { itinerarios(ds, aerop)(ori, dst) }
-  val (r1p, t1p) = medir { itinerariosPar(ds, aerop)(ori, dst) }
-  val ok1 = (r1s == r1p)
+  val (t1s, t1p, sp1, desv1, ok1) = compararPromedio(
+    itinerarios(ds, aerop)(ori, dst),
+    itinerariosPar(ds, aerop)(ori, dst),
+    rep
+  )
+  fila("F1", t1s, t1p, sp1, ok1)
+
+  if (imprimir) {
+    println("\n--- Itinerarios (F1) ---")
+    println("Secuencial:")
+    itinerarios(ds, aerop)(ori, dst).take(3).foreach(mostrar)
+
+    println("Paralelo:")
+    itinerariosPar(ds, aerop)(ori, dst).take(3).foreach(mostrar)
+
+    println("------------------------\n")
+  }
 
   // ---------------- F2 ----------------
-  val (r2s, t2s) = medir { itinerariosTiempo(ds, aerop)(ori, dst) }
-  val (r2p, t2p) = medir { itinerariosTiempoPar(ds, aerop)(ori, dst) }
-  val ok2 = (r2s == r2p)
+  val (t2s, t2p, sp2, desv2, ok2) = compararPromedio(
+    itinerariosTiempo(ds, aerop)(ori, dst),
+    itinerariosTiempoPar(ds, aerop)(ori, dst),
+    rep
+  )
+  fila("F2", t2s, t2p, sp2, ok2)
 
   // ---------------- F3 ----------------
-  val (r3s, t3s) = medir { itinerariosEscalas(ds, aerop)(ori, dst) }
-  val (r3p, t3p) = medir { itinerariosEscalasPar(ds, aerop)(ori, dst) }
-  val ok3 = (r3s == r3p)
+  val (t3s, t3p, sp3, desv3, ok3) = compararPromedio(
+    itinerariosEscalas(ds, aerop)(ori, dst),
+    itinerariosEscalasPar(ds, aerop)(ori, dst),
+    rep
+  )
+  fila("F3", t3s, t3p, sp3, ok3)
 
   // ---------------- F4 ----------------
-  val (r4s, t4s) = medir { itinerariosAire(ds, aerop)(ori, dst) }
-  val (r4p, t4p) = medir { itinerariosAirePar(ds, aerop)(ori, dst) }
-  val ok4 = (r4s == r4p)
+  val (t4s, t4p, sp4, desv4, ok4) = compararPromedio(
+    itinerariosAire(ds, aerop)(ori, dst),
+    itinerariosAirePar(ds, aerop)(ori, dst),
+    rep
+  )
+  fila("F4", t4s, t4p, sp4, ok4)
 
   // ---------------- F5 ----------------
-  val (r5s, t5s) = medir { itinerarioSalida(ds, aerop)(ori, dst, 18, 30) }
-  val (r5p, t5p) = medir { itinerarioSalidaPar(ds, aerop)(ori, dst, 18, 30) }
-  val ok5 = (r5s == r5p)
+  val (t5s, t5p, sp5, desv5, ok5) = compararPromedio(
+    itinerarioSalida(ds, aerop)(ori, dst, 11, 30),
+    itinerarioSalidaPar(ds, aerop)(ori, dst, 11, 30),
+    rep
+  )
+  fila("F5", t5s, t5p, sp5, ok5)
 
-  // ---------------- TABLA FINAL ----------------
-  def fila(n: String, s: Double, p: Double, ok: Boolean): Unit =
-    println(f"${n}%-12s  sec = ${s}%-8.2f ms   par = ${p}%-8.2f ms   correctos?: $ok")
+  println("\n===================================================")
 
-  fila("F1", t1s, t1p, ok1)
-  fila("F2", t2s, t2p, ok2)
-  fila("F3", t3s, t3p, ok3)
-  fila("F4", t4s, t4p, ok4)
-  fila("F5", t5s, t5p, ok5)
+  // ⬅⬅⬅ Aquí devolvemos promedios de TODA la prueba O-D
+  val promSecTotal = (t1s + t2s + t3s + t4s + t5s) / 5
+  val promParTotal = (t1p + t2p + t3p + t4p + t5p) / 5
+  val desvTotal = (desv1 + desv2 + desv3 + desv4 + desv5) / 5
+
+  (promSecTotal, promParTotal, desvTotal)
 }
+
 
 
 // =======================================================================
 //                    EJECUTAR TODAS LAS PRUEBAS A1–A5
 // =======================================================================
 
-datasets15.foreach { case (nombre, ds) =>
+dataset16.foreach { case (nombre, ds) =>
 
   println("\n=======================================================")
   println(s"==============   DATASET $nombre   =====================")
@@ -429,13 +531,36 @@ datasets15.foreach { case (nombre, ds) =>
 
   val pares = obtenerParesOD(ds)
 
-  // Si quieres TODAS:
-  // pares.foreach { case (o, d) => probarOD(o, d, ds) }
+  /*val resultados: List[(Double, Double, Double)] =
+    pares.take(3).map { case (o, d) =>
+      probarOD(o, d, ds, rep = 20) // ← devuelve (promSec, promPar, desv)
+    }*/
 
-  // Para no imprimir 400 líneas:
-  pares.take(12).foreach { case (o, d) => probarOD(o, d, ds) }
+  // Para caso de 500.
+  val resultados: List[(Double, Double, Double)] =
+    pares.take(3).map { case (o, d) =>
+      probarOD(o, d, ds, rep = 50) // ← devuelve (promSec, promPar, desv)
+    }
 
-  println(s"\n(Pruebas mostradas: 12 / ${pares.size})")
+  val (sumSec, sumPar, sumDesv) =
+    resultados.foldLeft((0.0, 0.0, 0.0)) {
+      case ((acS, acP, acD), (ps, pa, d)) =>
+        (acS + ps, acP + pa, acD + d)
+    }
+
+  val n = resultados.size.toDouble
+
+  val promSecGrupo = sumSec / n
+  val promParGrupo = sumPar / n
+  val desvGrupo = sumDesv / n
+
+  println(s"\n(Pruebas mostradas: 3 / ${pares.size})")
+  println(f"Tiempo promedio SEC del grupo: $promSecGrupo%.2f ms")
+  println(f"Tiempo promedio PAR del grupo: $promParGrupo%.2f ms")
+  println(f"Desviación estándar promedio: $desvGrupo%.2f ms")
+
+  println("\n-------------------------------------------------------")
 }
+
 
 

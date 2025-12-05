@@ -1,4 +1,4 @@
-[info] downloading https://repo1.maven.org/maven2/com/storm-enroute/scalameter_3_3/0.20/scalameter_3_3-0.20.pom
-[info] downloading failed https://repo1.maven.org/maven2/com/storm-enroute/scalameter_3_3/0.20/scalameter_3_3-0.20.pom
-[info] downloading https://repo1.maven.org/maven2/com/storm-enroute/scalameter_3_3/0.20/scalameter_3_3-0.20.pom.sha1
-[info] downloading failed https://repo1.maven.org/maven2/com/storm-enroute/scalameter_3_3/0.20/scalameter_3_3-0.20.pom.sha1
+[info] downloading https://repo1.maven.org/maven2/com/storm-enroute/scalameter-core_3/0.21/scalameter-core_3-0.21.pom
+[info] downloading failed https://repo1.maven.org/maven2/com/storm-enroute/scalameter-core_3/0.21/scalameter-core_3-0.21.pom
+[info] downloading https://repo1.maven.org/maven2/com/storm-enroute/scalameter-core_3/0.21/scalameter-core_3-0.21.pom.sha1
+[info] downloading failed https://repo1.maven.org/maven2/com/storm-enroute/scalameter-core_3/0.21/scalameter-core_3-0.21.pom.sha1
