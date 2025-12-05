@@ -239,7 +239,7 @@ def mostrarItinerariosEn(ds: List[Vuelo]): Boolean =
 //  LISTA DE DATASETS
 // =======================================================================
 
-
+/*
 val datasets15 = List(
   ("A1", vuelosA1),
   ("A2", vuelosA2),
@@ -247,6 +247,34 @@ val datasets15 = List(
   ("A4", vuelosA4),
   ("A5", vuelosA5)
 )
+*/
+
+
+val datasets40 = List(
+  ("B1", vuelosB1),
+  ("B2", vuelosB2),
+  ("B3", vuelosB3),
+  ("B4", vuelosB4),
+  ("B5", vuelosB5)
+)
+
+/*
+val datasets100 = List(
+  ("C1", vuelosC1),
+  ("C2", vuelosC2),
+  ("C3", vuelosC3),
+  ("C4", vuelosC4),
+  ("C5", vuelosC5)
+)
+
+val datasets500 = List(
+  ("D1", vuelosD1),
+  ("D2", vuelosD2),
+  ("D3", vuelosD3),
+  ("D4", vuelosD4),
+  ("D5", vuelosD5)
+)
+*/
 
 
 /*
@@ -388,7 +416,7 @@ def probarOD(ori: String, dst: String, ds: List[Vuelo], rep: Int): (Double, Doub
 //                    EJECUTAR TODAS LAS PRUEBAS A1–A5
 // =======================================================================
 
-dataset16.foreach { case (nombre, ds) =>
+datasets40.foreach { case (nombre, ds) =>
 
   println("\n=======================================================")
   println(s"==============   DATASET $nombre   =====================")
@@ -402,17 +430,11 @@ dataset16.foreach { case (nombre, ds) =>
       probarOD(o, d, ds, rep = 50) // ← devuelve (promSec, promPar, desv)
     }
 
-  val (sumSec, sumPar, sumDesv) =
-    resultados.foldLeft((0.0, 0.0, 0.0)) {
-      case ((acS, acP, acD), (ps, pa, d)) =>
-        (acS + ps, acP + pa, acD + d)
-    }
+  // Para no imprimir 400 líneas:
+  pares.take(3).foreach { case (o, d) => probarOD(o, d, ds) }
 
-  val n = resultados.size.toDouble
-
-  val promSecGrupo = sumSec / n
-  val promParGrupo = sumPar / n
-  val desvGrupo = sumDesv / n
+  println(s"\n(Pruebas mostradas: 3 / ${pares.size})")
+}
 
   println(s"\n(Pruebas mostradas: 3 / ${pares.size})")
   println(f"Tiempo promedio SEC del grupo: $promSecGrupo%.2f ms")
