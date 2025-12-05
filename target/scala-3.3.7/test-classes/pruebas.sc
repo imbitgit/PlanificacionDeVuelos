@@ -10,6 +10,7 @@ vuelosCurso.take(2)  // Prueba para comprobar que sí hay funcionamiento.
 //Estas son las pruebas que el enunciado plantea para itinerarios, Devuelven
 //Exactamente lo que pide el enunciado por tanto son correctas (eso espero xd)
 val itsCurso = itinerarios(vuelosCurso, aeropuertosCurso)
+
 //Prueba itinerariosTiempo
 //2.1 Aeropuertos Incomunicados
 val its1 = itsCurso("MID", "SVCS")
@@ -233,144 +234,9 @@ def mostrarItinerariosEn(ds: List[Vuelo]): Boolean =
   ds.size <= 40      // solo imprimimos en dataset 15 y dataset 40
 
 
-/*
-// ================================================================
-//                     PRUEBAS CON EL CURSO PEQUEÑO
-// ================================================================
-println("\n================= PRUEBAS CURSO =================")
-
-val itsCursoN = itinerarios(vuelosCurso, aeropuertosCurso)
-
-val itsC1 = itsCursoN("MID", "SVCS")
-val itsC2 = itsCursoN("CLO", "SVCS")
-val itsC3 = itsCursoN("CLO", "SVO")
-val itsC4 = itsCursoN("CLO", "MEX")
-val itsC5 = itsCursoN("CTG", "PTY")
-
-println("\n--- Itinerarios Curso ---")
-println("MID → SVCS:"); itsC1.foreach(mostrar)
-println("\nCLO → SVCS:"); itsC2.foreach(mostrar)
-println("\nCLO → SVO (4 itinerarios):"); itsC3.foreach(mostrar)
-println("\nCLO → MEX (2 itinerarios):"); itsC4.foreach(mostrar)
-println("\nCTG → PTY (2 itinerarios):"); itsC5.foreach(mostrar)
-
-// ---------------------------------------------------------------
-//      PRUEBA DE LAS 4 FUNCIONES ÓPTIMAS EN EL CURSO
-// ---------------------------------------------------------------
-val fTpoCur = itinerariosTiempo(vuelosCurso, aeropuertosCurso)
-val fEscCur = itinerariosEscalas(vuelosCurso, aeropuertosCurso)
-val fAirCur = itinerariosAire(vuelosCurso, aeropuertosCurso)
-val fSalCur = itinerarioSalida(vuelosCurso, aeropuertosCurso)
-
-println("\n--- Tiempo Curso CLO → SVO ---"); fTpoCur("CLO","SVO").foreach(mostrar)
-println("\n--- Escalas Curso CLO → SVO ---"); fEscCur("CLO","SVO").foreach(mostrar)
-println("\n--- Aire Curso CLO → SVO ---"); fAirCur("CLO","SVO").foreach(mostrar)
-println("\n--- Salida Curso CTG → PTY (cita 11:40) ---"); mostrar(fSalCur("CTG","PTY",11,40))
-*/
 
 // =======================================================================
-//                             PRUEBAS ESCALADAS
-//              15 vuelos  →  40 vuelos  →  100 vuelos  →  200+ vuelos
-// =======================================================================
-
-// =======================================================
-//           LISTAS DE DATASETS (A, B, C, D, …)
-// =======================================================
-/*
-val datasets15  = List(("A1", vuelosA1), ("A2", vuelosA2), ("A3", vuelosA3), ("A4", vuelosA4), ("A5", vuelosA5))
-val datasets40  = List(("B1", vuelosB1), ("B2", vuelosB2), ("B3", vuelosB3), ("B4", vuelosB4), ("B5", vuelosB5))
-val datasets100 = List(("C1", vuelosC1), ("C2", vuelosC2), ("C3", vuelosC3), ("C4", vuelosC4), ("C5", vuelosC5))
-
-val dataset200 = ("200v", vuelosC1 ++ vuelosC2)
-val dataset300 = ("300v", vuelosC1 ++ vuelosC2 ++ vuelosC3)
-val dataset400 = ("400v", vuelosC1 ++ vuelosC2 ++ vuelosC3 ++ vuelosC4)
-val dataset500 = ("500v", vuelosC1 ++ vuelosC2 ++ vuelosC3 ++ vuelosC4 ++ vuelosC5)
-
-// =======================================================
-//               FUNCIÓN DE PRUEBA GENERAL
-// =======================================================
-def probar(nombre: String, vuelos: List[Vuelo], ori: String, dst: String): Unit = {
-  println("\n" + "="*90)
-  println(s"DATASET $nombre — ${vuelos.length} vuelos")
-  println("="*90)
-
-  println("\n--- VERSIÓN SECUENCIAL ---")
-  val f1 = medir("F1 itinerarios") {
-    itinerarios(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println(s"     Cantidad rutas: ${f1.length}")
-
-  val f2 = medir("F2 tiempo") {
-    itinerariosTiempo(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println("     Mejores 3 por tiempo:"); f2.foreach(mostrar)
-
-  val f3 = medir("F3 escalas") {
-    itinerariosEscalas(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println("     Mejores 3 por escalas:"); f3.foreach(mostrar)
-
-  val f4 = medir("F4 aire") {
-    itinerariosAire(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println("     Mejores 3 por aire:"); f4.foreach(mostrar)
-
-  val f5 = medir("F5 salida") {
-    itinerarioSalida(vuelos, aeropuertosCurso)(ori, dst, 18, 30)
-  }
-  println("     Mejor salida antes de la cita:")
-  mostrar(f5)
-
-  println("\n--- VERSIÓN PARALELA ---")
-  val fp1 = medir("F1p itinerariosPar") {
-    itinerariosPar(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println(s"     Cantidad rutas: ${fp1.length}")
-
-  val fp2 = medir("F2p tiempoPar") {
-    itinerariosTiempoPar(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println("     Mejores 3 por tiempo:"); fp2.foreach(mostrar)
-
-  val fp3 = medir("F3p escalasPar") {
-    itinerariosEscalasPar(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println("     Mejores 3 por escalas:"); fp3.foreach(mostrar)
-
-  val fp4 = medir("F4p airePar") {
-    itinerariosAirePar(vuelos, aeropuertosCurso)(ori, dst)
-  }
-  println("     Mejores 3 por aire:"); fp4.foreach(mostrar)
-
-  val fp5 = medir("F5p salidaPar") {
-    itinerarioSalidaPar(vuelos, aeropuertosCurso)(ori, dst, 18, 30)
-  }
-  println("     Mejor salida antes de la cita:")
-  mostrar(fp5)
-}
-
-// =======================================================
-//                          EJECUCIÓN
-// =======================================================
-println("\n================ PRUEBAS 15 VUELOS ================")
-datasets15.foreach { case (n, v) => probar(n, v, "HOU", "MSY") }
-
-println("\n================ PRUEBAS 40 VUELOS ================")
-datasets40.foreach { case (n, v) => probar(n, v, "DFW", "ORD") }
-
-println("\n================ PRUEBAS 100 VUELOS ================")
-datasets100.foreach { case (n, v) => probar(n, v, "ORD", "TPA") }
-
-println("\n================ PRUEBAS GRANDES (200–500) ================")
-probar(dataset200._1, dataset200._2, "ORD", "TPA")
-probar(dataset300._1, dataset300._2, "ORD", "TPA")
-probar(dataset400._1, dataset400._2, "ORD", "TPA")
-probar(dataset500._1, dataset500._2, "ORD", "TPA")
-*/
-
-
-// =======================================================================
-//  LISTA DE DATASETS (A1..A5) — USAMOS LOS QUE YA DEFINISTE EN Datos
+//  LISTA DE DATASETS
 // =======================================================================
 
 
@@ -416,11 +282,11 @@ val extra:List[Vuelo] = List(Vuelo("HP", 200, "PHX", 8, 10, "ABQ", 12, 0, 0))
 
 val dataset16:List[(String, List[Vuelo])] = List(("16", vuelosA1 ++ extra))
 
-// Aeropuertos (los de USA que ya tienes)
+// Aeropuertos (los de USA)
 val aerop = aeropuertos
 
 // =======================================================================
-//         FUNCIÓN PARA OBTENER LOS O-D DE UN DATASET DE 15 VUELOS
+//         FUNCIÓN PARA OBTENER LOS O-D DE UN DATASET
 // =======================================================================
 
 def obtenerParesOD(ds: List[Vuelo]): List[(String,String)] = {
@@ -443,7 +309,6 @@ def obtenerParesOD(ds: List[Vuelo]): List[(String,String)] = {
 
 // =======================================================================
 //                    FUNCIÓN DE PRUEBA PARA UN O-D
-//                (IGUAL A TU FORMATO, SIN CAMBIAR NADA)
 // =======================================================================
 
 def probarOD(ori: String, dst: String, ds: List[Vuelo], rep: Int): (Double, Double, Double) = {
@@ -501,8 +366,8 @@ def probarOD(ori: String, dst: String, ds: List[Vuelo], rep: Int): (Double, Doub
 
   // ---------------- F5 ----------------
   val (t5s, t5p, sp5, desv5, ok5) = compararPromedio(
-    itinerarioSalida(ds, aerop)(ori, dst, 11, 30),
-    itinerarioSalidaPar(ds, aerop)(ori, dst, 11, 30),
+    itinerarioSalida(ds, aerop)(ori, dst, 18, 30),
+    itinerarioSalidaPar(ds, aerop)(ori, dst, 18, 30),
     rep
   )
   fila("F5", t5s, t5p, sp5, ok5)
@@ -531,12 +396,7 @@ dataset16.foreach { case (nombre, ds) =>
 
   val pares = obtenerParesOD(ds)
 
-  /*val resultados: List[(Double, Double, Double)] =
-    pares.take(3).map { case (o, d) =>
-      probarOD(o, d, ds, rep = 20) // ← devuelve (promSec, promPar, desv)
-    }*/
-
-  // Para caso de 500.
+  // Para caso de 500, adaptar las repeticiones a 5.
   val resultados: List[(Double, Double, Double)] =
     pares.take(3).map { case (o, d) =>
       probarOD(o, d, ds, rep = 50) // ← devuelve (promSec, promPar, desv)
@@ -561,6 +421,3 @@ dataset16.foreach { case (nombre, ds) =>
 
   println("\n-------------------------------------------------------")
 }
-
-
-
