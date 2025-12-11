@@ -199,6 +199,27 @@ def medir[T](bloque: => T): (T, Double) = {
   (r, (t1 - t0) / 1e6)
 }
 
+// Mide SOLO tiempo. NO devuelve resultado.
+def medirSoloTiempo(bloque: => Unit, rep: Int): (Double, Double) = {
+  val tiempos =
+    List.fill(rep) {
+      val t0 = System.nanoTime()
+      bloque
+      val t1 = System.nanoTime()
+      (t1 - t0) / 1e6
+    }
+
+  val promedio = tiempos.sum / rep
+  val varianza = tiempos.map(t => math.pow(t - promedio, 2)).sum / rep
+  val desviacion = math.sqrt(varianza)
+
+  (promedio, desviacion)
+}
+
+// Ejecuta la función una sola vez para obtener el resultado puro.
+def ejecutarUnaVez[T](bloque: => T): T = bloque
+
+
 def medirPromedio[T](bloque: => T, rep: Int): (T, Double, Double) = {
   // Ejecutamos una vez para obtener el resultado (puro)
   val resultado = bloque
@@ -221,12 +242,31 @@ def medirPromedio[T](bloque: => T, rep: Int): (T, Double, Double) = {
 def compararPromedio[T](sec: => T, par: => T, rep: Int):
 (Double, Double, Double, Double, Boolean) = {
 
-  val (resS, promS, desvS) = medirPromedio(sec, rep)
+  /*val (resS, promS, desvS) = medirPromedio(sec, rep)
   val (resP, promP, desvP) = medirPromedio(par, rep)
 
   val speedup = promS / promP
   val ok = (resS == resP)
 
+  (promS, promP, speedup, (desvS + desvP) / 2, ok)*/
+
+  // 1. Obtener resultados una sola vez (sin medir tiempo)
+  val resS = ejecutarUnaVez(sec)
+  val resP = ejecutarUnaVez(par)
+
+  // 2. Medir SOLO tiempo (sin obtener el resultado)
+  val (promS, desvS) = medirSoloTiempo({
+    sec; ()
+  }, rep)
+  val (promP, desvP) = medirSoloTiempo({
+    par; ()
+  }, rep)
+
+  // 3. Speedup y verificación de igualdad
+  val speedup = promS / promP
+  val ok = (resS == resP)
+
+  // Devuelve lo que tu probarOD espera
   (promS, promP, speedup, (desvS + desvP) / 2, ok)
 }
 
@@ -239,7 +279,7 @@ def mostrarItinerariosEn(ds: List[Vuelo]): Boolean =
 //  LISTA DE DATASETS
 // =======================================================================
 
-/*
+
 val datasets15 = List(
   ("A1", vuelosA1),
   ("A2", vuelosA2),
@@ -247,7 +287,7 @@ val datasets15 = List(
   ("A4", vuelosA4),
   ("A5", vuelosA5)
 )
-*/
+
 
 
 val datasets40 = List(
@@ -258,34 +298,6 @@ val datasets40 = List(
   ("B5", vuelosB5)
 )
 
-/*
-val datasets100 = List(
-  ("C1", vuelosC1),
-  ("C2", vuelosC2),
-  ("C3", vuelosC3),
-  ("C4", vuelosC4),
-  ("C5", vuelosC5)
-)
-
-val datasets500 = List(
-  ("D1", vuelosD1),
-  ("D2", vuelosD2),
-  ("D3", vuelosD3),
-  ("D4", vuelosD4),
-  ("D5", vuelosD5)
-)
-*/
-
-
-/*
-val datasets40 = List(
-  ("B1", vuelosB1),
-  ("B2", vuelosB2),
-  ("B3", vuelosB3),
-  ("B4", vuelosB4),
-  ("B5", vuelosB5)
-)
-*/
 
 /*
 val datasets100 = List(
@@ -306,9 +318,9 @@ val datasets500 = List(
 */
 
 //val dataset200:List[(String, List[Vuelo])] = List(("200", vuelosC1 ++ vuelosC2))
-val extra:List[Vuelo] = List(Vuelo("HP", 200, "PHX", 8, 10, "ABQ", 12, 0, 0))
+//val extra:List[Vuelo] = List(Vuelo("HP", 200, "PHX", 8, 10, "ABQ", 12, 0, 0))
 
-val dataset16:List[(String, List[Vuelo])] = List(("16", vuelosA1 ++ extra))
+//val dataset16:List[(String, List[Vuelo])] = List(("16", vuelosA1 ++ extra))
 
 // Aeropuertos (los de USA)
 val aerop = aeropuertos
@@ -416,7 +428,7 @@ def probarOD(ori: String, dst: String, ds: List[Vuelo], rep: Int): (Double, Doub
 //                    EJECUTAR TODAS LAS PRUEBAS A1–A5
 // =======================================================================
 
-datasets40.foreach { case (nombre, ds) =>
+datasets15.foreach { case (nombre, ds) =>
 
   println("\n=======================================================")
   println(s"==============   DATASET $nombre   =====================")
@@ -427,14 +439,20 @@ datasets40.foreach { case (nombre, ds) =>
   // Para caso de 500, adaptar las repeticiones a 5.
   val resultados: List[(Double, Double, Double)] =
     pares.take(3).map { case (o, d) =>
-      probarOD(o, d, ds, rep = 50) // ← devuelve (promSec, promPar, desv)
+      probarOD(o, d, ds, rep = 1) // ← devuelve (promSec, promPar, desv)
     }
 
-  // Para no imprimir 400 líneas:
-  pares.take(3).foreach { case (o, d) => probarOD(o, d, ds) }
+  val (sumSec, sumPar, sumDesv) =
+    resultados.foldLeft((0.0, 0.0, 0.0)) {
+      case ((acS, acP, acD), (ps, pa, d)) =>
+        (acS + ps, acP + pa, acD + d)
+    }
 
-  println(s"\n(Pruebas mostradas: 3 / ${pares.size})")
-}
+  val n = resultados.size.toDouble
+
+  val promSecGrupo = sumSec / n
+  val promParGrupo = sumPar / n
+  val desvGrupo = sumDesv / n
 
   println(s"\n(Pruebas mostradas: 3 / ${pares.size})")
   println(f"Tiempo promedio SEC del grupo: $promSecGrupo%.2f ms")
@@ -443,3 +461,64 @@ datasets40.foreach { case (nombre, ds) =>
 
   println("\n-------------------------------------------------------")
 }
+
+val its15A1 = itinerarios(vuelosA1,aeropuertos)
+val itsTpo15A1 = itinerariosTiempo(vuelosA1,aeropuertos)
+val itsEsc15A1 = itinerariosEscalas(vuelosA1,aeropuertos)
+val itsAir15A1 = itinerariosAire(vuelosA1,aeropuertos)
+val itsSal15A1 = itinerarioSalida(vuelosA1,aeropuertos)
+its15A1("HOU","BNA")
+itsTpo15A1("HOU","BNA")
+itsEsc15A1("HOU","BNA")
+itsAir15A1("HOU","BNA")
+itsSal15A1("HOU","BNA", 18, 30)
+
+val its40B1 = itinerarios(vuelosB1,aeropuertos)
+val itsTpo40B1 = itinerariosTiempo(vuelosB1,aeropuertos)
+val itsEsc40B1 = itinerariosEscalas(vuelosB1,aeropuertos)
+val itsAir40B1 = itinerariosAire(vuelosB1,aeropuertos)
+val itsSal40B1 = itinerarioSalida(vuelosB1,aeropuertos)
+its40B1("DFW","ORD")
+itsTpo40B1("DFW","ORD")
+itsEsc40B1("DFW","ORD")
+itsAir40B1("DFW","ORD")
+itsSal40B1("DFW","ORD", 18, 30)
+
+
+//2.1 Aeropuertos incomunicados
+val itsPar1 = itsCursoPar("MID", "SVCS")
+val itsPar2 = itsCursoPar("CLO", "SVCS")
+
+// 4 itinerarios CLO-SVO
+
+val itsPar3 = itsCursoPar("CLO","SVO")
+
+//2 itinerarios CLO-MEX
+
+val itsPar4 = itsCursoPar("CLO", "MEX")
+
+//2 itinerarios CTG-PTY
+val itsPar5 = itsCursoPar("CTG","PTY")
+
+val itsPar15A1 = itinerariosPar(vuelosA1,aeropuertos)
+val itsTpoPar15A1 = itinerariosTiempoPar(vuelosA1,aeropuertos)
+val itsEscPar15A1 = itinerariosEscalasPar(vuelosA1,aeropuertos)
+val itsAirPar15A1 = itinerariosAirePar(vuelosA1,aeropuertos)
+val itsSalPar15A1 = itinerarioSalidaPar(vuelosA1,aeropuertos)
+itsPar15A1("HOU","BNA")
+itsTpoPar15A1("HOU","BNA")
+itsEscPar15A1("HOU","BNA")
+itsAirPar15A1("HOU","BNA")
+itsSalPar15A1("HOU","BNA", 18, 30)
+
+val itsPar40B1 = itinerariosPar(vuelosB1,aeropuertos)
+val itsTpoPar40B1 = itinerariosTiempoPar(vuelosB1,aeropuertos)
+val itsEscPar40B1 = itinerariosEscalasPar(vuelosB1,aeropuertos)
+val itsAirPar40B1 = itinerariosAirePar(vuelosB1,aeropuertos)
+val itsSalPar40B1 = itinerarioSalidaPar(vuelosB1,aeropuertos)
+itsPar40B1("DFW","ORD")
+itsTpoPar40B1("DFW","ORD")
+itsEscPar40B1("DFW","ORD")
+itsAirPar40B1("DFW","ORD")
+itsSalPar40B1("DFW","ORD", 18, 30)
+
